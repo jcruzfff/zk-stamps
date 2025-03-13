@@ -6,7 +6,6 @@ import { useAccount, useDisconnect } from 'wagmi';
 // Existing components
 import WalletConnection from './components/WalletConnection';
 import PassportVerification, { PassportVerificationData } from './components/PassportVerification';
-import ProofSettings from './components/ProofSettings';
 import TravelVerification from './components/TravelVerification';
 
 // New components
@@ -62,7 +61,6 @@ type PassportData = {
 enum AppStep {
   ConnectWallet,
   VerifyPassport,
-  SelectPrivacySettings,
   Home
 }
 
@@ -74,7 +72,7 @@ export default function Home() {
   const [passportData, setPassportData] = useState<PassportData | null>(null);
   const [poaps, setPoaps] = useState<POAP[]>([]);
   const [isQRSheetOpen, setIsQRSheetOpen] = useState(false);
-  const [proofSettings, setProofSettings] = useState<ProofSettings>({
+  const [proofSettings] = useState<ProofSettings>({
     showName: false,
     showNationality: true,
     showDateOfBirth: false,
@@ -87,7 +85,7 @@ export default function Home() {
     showNotOnSanctionsList: true,
   });
 
-  // Use effect for wallet connection state changes instead of during render
+  // Use effect for wallet connection state changes
   useEffect(() => {
     // Don't automatically proceed to next step
     // Let user explicitly move to next step after connecting wallet
@@ -100,27 +98,17 @@ export default function Home() {
 
   // Handle passport verification
   const handlePassportVerified = (data: PassportVerificationData) => {
-    console.log('🎯 PAGE: handlePassportVerified called with data:', data);
-    console.log('🎯 PAGE: Data type:', typeof data, 'Is null?', data === null, 'Is undefined?', data === undefined);
+    console.log('Passport verification successful, data received:', data);
     
     if (!data) {
-      console.error('🛑 PAGE: Verification data is null or undefined!');
+      console.error('Verification data is null or undefined');
       return;
     }
     
-    console.log('🎯 PAGE: Current step before change:', 
-      currentStep === AppStep.ConnectWallet ? 'ConnectWallet' :
-      currentStep === AppStep.VerifyPassport ? 'VerifyPassport' :
-      currentStep === AppStep.SelectPrivacySettings ? 'SelectPrivacySettings' :
-      'Home'
-    );
-    
     try {
       // Update state with verification data
-      console.log('🎯 PAGE: Setting isPassportVerified to true');
       setIsPassportVerified(true);
       
-      console.log('🎯 PAGE: Setting passportData');
       // Clone the data to ensure it's a new reference
       const newPassportData = {
         isHuman: data.isHuman || true,
@@ -140,46 +128,18 @@ export default function Home() {
       
       setPassportData(newPassportData);
       
-      // Use setTimeout to ensure state updates have happened before changing the step
-      console.log('🎯 PAGE: Setting currentStep to SelectPrivacySettings with a slight delay');
-      setTimeout(() => {
-        console.log('🎯 PAGE: Now updating currentStep to SelectPrivacySettings');
-        setCurrentStep(AppStep.SelectPrivacySettings);
-        
-        // Additional check after a moment to verify state changes took effect
-        setTimeout(() => {
-          console.log('🎯 PAGE: Verification complete! Final state check:');
-          console.log('- currentStep:', 
-            currentStep === AppStep.ConnectWallet ? 'ConnectWallet' :
-            currentStep === AppStep.VerifyPassport ? 'VerifyPassport' :
-            currentStep === AppStep.SelectPrivacySettings ? 'SelectPrivacySettings' :
-            'Home'
-          );
-          console.log('- isPassportVerified:', isPassportVerified);
-          console.log('- passportData:', passportData);
-          
-          // If step hasn't updated, force it one more time
-          if (currentStep !== AppStep.SelectPrivacySettings) {
-            console.log('🎯 PAGE: Forcing step change one more time');
-            setCurrentStep(AppStep.SelectPrivacySettings);
-          }
-        }, 500);
-      }, 100);
+      // Go directly to Home step
+      setCurrentStep(AppStep.Home);
+      console.log('Moving to Home step');
       
     } catch (error) {
-      console.error('🛑 PAGE: Error in handlePassportVerified:', error);
+      console.error('Error handling passport verification:', error);
     }
   };
 
   // Add new POAP to the collection
   const handlePoapMinted = (poap: POAP) => {
     setPoaps(prev => [...prev, poap]);
-  };
-
-  // Handle proof settings changes
-  const handleProofSettingsChange = (settings: ProofSettings) => {
-    setProofSettings(settings);
-    setCurrentStep(AppStep.Home);
   };
 
   // Open QR sheet for displaying proof
@@ -219,74 +179,6 @@ export default function Home() {
             </div>
             <div className="w-full max-w-md">
               <PassportVerification onVerifiedAction={handlePassportVerified} />
-            </div>
-            
-            {/* Debug button in development mode */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Development Tools</h3>
-                <p className="text-xs text-gray-500 mb-3">These buttons are only visible in development mode</p>
-                
-                <div className="flex flex-col gap-2">
-                  <button 
-                    onClick={() => {
-                      console.log('🛠️ DEBUG: Manually creating passport data and advancing to next step');
-                      
-                      // Create test passport data
-                      const testData: PassportData = {
-                        isHuman: true,
-                        name: 'Debug User',
-                        nationality: 'Test Nation',
-                        dateOfBirth: '1990-01-01',
-                        gender: 'X',
-                        passportNumber: 'DEBUG123',
-                        issuingState: 'TST',
-                        expiryDate: '2030-01-01',
-                        above18: true,
-                        fromEU: true,
-                        notOnOFACList: true,
-                        timestamp: new Date().toISOString(),
-                        verificationProof: `debug_${Date.now()}`,
-                      };
-                      
-                      // Update state directly
-                      setIsPassportVerified(true);
-                      setPassportData(testData);
-                      
-                      // Force next step after a short delay
-                      setTimeout(() => {
-                        setCurrentStep(AppStep.SelectPrivacySettings);
-                      }, 100);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                  >
-                    Skip Verification (Debug)
-                  </button>
-                  
-                  <button 
-                    onClick={() => proceedToNextStep()}
-                    className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    Force Next Step
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      
-      case AppStep.SelectPrivacySettings:
-        return (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold mb-2">Privacy Settings</h2>
-              <p className="text-gray-600">Select what passport information you want to include in your proof</p>
-            </div>
-            <div className="w-full max-w-md">
-              <ProofSettings 
-                passportData={passportData}
-                onSettingsChangeAction={handleProofSettingsChange}
-              />
             </div>
           </div>
         );
