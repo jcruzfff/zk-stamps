@@ -80,7 +80,6 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
-  // Add a state to track verification success
   const [isVerified, setIsVerified] = useState(false);
   const [verificationData, setVerificationData] = useState<PassportVerificationData | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,8 +89,6 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   
   // IMPORTANT: Replace with your actual ngrok URL when you get it
-  // For example: https://a1b2c3d4.ngrok.io
-  // You need to update this with the URL from your ngrok terminal
   const NGROK_URL = 'https://a691-24-5-60-88.ngrok-free.app'; // Updated with current ngrok URL
   
   // Use ngrok URL for development, or your regular origin for production
@@ -124,14 +121,10 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
       
       try {
         // Create the Self app configuration with recommended constructor pattern
-        // Note: Using type assertion to bypass type checking issues with external library
-       
         const appBuilder = new SelfAppBuilder({
           appName: "Stamper",
           scope: "stamper-travel-app",
-          // Use the ngrok URL for the endpoint
-          endpoint: `${apiEndpoint}?userId=${userId}`, // Pass userId in the URL
-          // Must be https for Self Protocol
+          endpoint: `${apiEndpoint}?userId=${userId}`,
           endpointType: "https",
           userId: userId,
           disclosures: {
@@ -174,37 +167,12 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
         return;
       }
       
-      // Log the data we're about to pass to the callback
-      console.log('📋 Verification data fields:');
-      console.log('- userId:', data.userId);
-      console.log('- name:', data.name);
-      console.log('- nationality:', data.nationality);
-      console.log('- isHuman:', data.isHuman);
-      
       // Set the verification data and success state
       setVerificationData(data);
       setIsVerified(true);
       
       // Call the callback provided by the parent component
-      console.log('👉 Calling onVerifiedAction callback with passport data');
-      
-      // Add try-catch around the callback to debug any issues
-      try {
-        console.log('⚙️ Verification callback type:', typeof onVerifiedAction);
-        if (typeof onVerifiedAction !== 'function') {
-          console.error('❌ ERROR: onVerifiedAction is not a function!', onVerifiedAction);
-          setError('Internal error: verification callback is not a function');
-          return;
-        }
-        
-        console.log('🧪 Testing callback with data...');
-        onVerifiedAction(data);
-        console.log('✓ Callback executed without errors');
-      } catch (callbackError) {
-        console.error('❌ ERROR in onVerifiedAction callback:', callbackError);
-        setError(`Callback error: ${(callbackError as Error).message}`);
-      }
-      
+      onVerifiedAction(data);
       console.log('✅ Verification complete. Flow should continue now.');
       setIsProcessing(false);
       
@@ -224,12 +192,10 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
       // Make a GET request to the API endpoint with the userId
       const response = await fetch(`${apiEndpoint}?userId=${userId}`);
       console.log('API response status:', response.status);
-      console.log('API response headers:', response.headers);
       
       if (response.ok) {
         // Get response text first to inspect
         const rawText = await response.text();
-        console.log('Raw response text:', rawText.substring(0, 200) + (rawText.length > 200 ? '...' : ''));
         
         let data;
         try {
@@ -517,64 +483,10 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
         
         <div className="flex flex-col gap-3 mt-4 w-full">
           <button 
-            onClick={() => {
-              console.log('🔄 Manual continue triggered');
-              // Try calling the callback again with a test data fallback if needed
-              try {
-                if (!verificationData) {
-                  console.error('❌ No verification data found for manual continue');
-                  
-                  // Create fallback data - this is a last resort
-                  const fallbackData: PassportVerificationData = {
-                    isHuman: true,
-                    name: 'Verified User',
-                    nationality: 'United States',
-                    dateOfBirth: '1990-01-01',
-                    gender: 'X',
-                    passportNumber: 'AUTO1234',
-                    issuingState: 'USA',
-                    expiryDate: '2030-01-01',
-                    above18: true,
-                    fromEU: false,
-                    notOnOFACList: true,
-                    timestamp: new Date().toISOString(),
-                    verificationProof: `manual_${Date.now()}`,
-                    userId: userId || 'unknown'
-                  };
-                  
-                  console.log('⚠️ Using fallback verification data:', fallbackData);
-                  setVerificationData(fallbackData);
-                  
-                  console.log('Calling onVerifiedAction with fallback data');
-                  // Call callback with the fallback data
-                  onVerifiedAction(fallbackData);
-                } else {
-                  console.log('Calling onVerifiedAction with existing data:', verificationData);
-                  // Try forcing parent state updates
-                  window.setTimeout(() => {
-                    onVerifiedAction(verificationData);
-                    console.log('Callback completed after delay');
-                  }, 100);
-                }
-              } catch (err) {
-                console.error('Error in manual continue:', err);
-                setError(`Manual continue error: ${(err as Error).message}`);
-              }
-            }}
+            onClick={() => onVerifiedAction(verificationData)}
             className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Continue to Next Step
-          </button>
-          
-          <button 
-            onClick={() => {
-              // Reset verification state if the user wants to verify again
-              setIsVerified(false);
-              setVerificationData(null);
-            }}
-            className="w-full px-4 py-2 text-sm text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50"
-          >
-            Verify Again
           </button>
         </div>
       </div>
@@ -618,127 +530,6 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
             </div>
           )}
         </>
-      )}
-
-      {/* Debugging button - only show in development */}
-      {process.env.NODE_ENV !== 'production' && !isVerified && (
-        <div className="mt-4 border-t pt-4">
-          <p className="text-xs text-gray-500 mb-2">Debugging Tools</p>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Manually triggering verification process');
-                console.log('1. Current userId:', userId);
-                
-                // Force processing state
-                setIsProcessing(true);
-                
-                // Directly attempt to fetch verification data
-                setTimeout(async () => {
-                  console.log('2. Attempting to fetch verification data from API');
-                  try {
-                    const response = await fetch(`${apiEndpoint}?userId=${userId}`);
-                    console.log('3. API Response:', response);
-                    
-                    if (response.ok) {
-                      console.log('4. Response is OK');
-                      
-                      // Get response text first to inspect
-                      const rawText = await response.text();
-                      console.log('5. Raw response text:', rawText.substring(0, 200) + (rawText.length > 200 ? '...' : ''));
-                      
-                      let data;
-                      try {
-                        // Try to parse as JSON regardless of content type
-                        data = JSON.parse(rawText);
-                        console.log('6. Successfully parsed JSON data:', data);
-                      } catch (parseError) {
-                        console.error('Failed to parse response as JSON:', parseError);
-                        setError(`Response parsing error: ${(parseError as Error).message}`);
-                        setIsProcessing(false);
-                        return;
-                      }
-                      
-                      if (data.status === 'success' && data.passportData) {
-                        console.log('7. Found valid passport data');
-                        // This should trigger the callback to parent component
-                        console.log('8. Calling onVerifiedAction with data');
-                        completeVerification(data.passportData);
-                        return;
-                      } else {
-                        console.log('7. ERROR: Data status not success or missing passportData', data);
-                      }
-                    } else {
-                      console.log('4. ERROR: Response not OK, status:', response.status);
-                    }
-                    
-                    // If we reach here, show an error and stop processing
-                    setError('Error in verification process. Check console logs.');
-                    setIsProcessing(false);
-                  } catch (err) {
-                    console.error('API request error:', err);
-                    setError(`API request error: ${(err as Error).message}`);
-                    setIsProcessing(false);
-                  }
-                }, 1000);
-              }}
-              className="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded border border-yellow-300"
-            >
-              Test Verification Process
-            </button>
-            
-            <button
-              onClick={() => {
-                console.log('🔍 TEST: Simulating QR verification detection');
-                console.log('Setting window.selfProofVerified = true');
-                
-                // Set the global verification flag
-                window.selfProofVerified = true;
-                
-                // This should trigger the same flow as if a real QR scan completed
-                handleVerificationDetected();
-              }}
-              className="px-3 py-1 text-sm bg-orange-100 text-orange-800 rounded border border-orange-300"
-            >
-              Test Verification Detection
-            </button>
-
-            <button
-              onClick={() => {
-                console.log('🔍 TEST: Directly calling the onVerifiedAction callback');
-                // Create test data that mimics what would come back from the API
-                const testData: PassportVerificationData = {
-                  isHuman: true,
-                  name: 'Test User',
-                  nationality: 'Test Country',
-                  dateOfBirth: '1990-01-01',
-                  gender: 'X',
-                  passportNumber: 'TEST1234',
-                  issuingState: 'TST',
-                  expiryDate: '2030-01-01',
-                  above18: true,
-                  fromEU: false,
-                  notOnOFACList: true,
-                  timestamp: new Date().toISOString(),
-                  verificationProof: `test_${Date.now()}`,
-                  userId: userId || 'unknown'
-                };
-                
-                // Set the UI to show processing
-                setIsProcessing(true);
-                
-                // This call should directly trigger the parent callback after a brief delay
-                setTimeout(() => {
-                  console.log('Calling completeVerification with test data');
-                  completeVerification(testData);
-                }, 100);
-              }}
-              className="px-3 py-1 text-sm bg-purple-100 text-purple-800 rounded border border-purple-300 mt-2"
-            >
-              Direct Callback (Bypass Flow)
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );
