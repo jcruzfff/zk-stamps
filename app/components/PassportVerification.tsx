@@ -34,6 +34,7 @@ export type PassportVerificationData = {
 
 type PassportVerificationProps = {
   onVerifiedAction: (data: PassportVerificationData) => void;
+  simplified?: boolean;
 };
 
 // Helper function to generate a deterministic userId based on the wallet address
@@ -64,7 +65,7 @@ const generateDeterministicUserId = (address: string): string => {
   return deterministicUuid;
 };
 
-export default function PassportVerification({ onVerifiedAction }: PassportVerificationProps) {
+export default function PassportVerification({ onVerifiedAction, simplified = false }: PassportVerificationProps) {
   const { address } = useAccount();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -675,57 +676,54 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
   // If verification is complete, show a success message
   if (isVerified && verificationData) {
     return (
-      <div className="relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md">
-        <div className="absolute top-4 right-4">
-          <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-            </svg>
+      <div className={simplified ? "text-center verification-success" : "relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md"}>
+        {!simplified && (
+          <div className="absolute top-4 right-4">
+            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
           </div>
-        </div>
+        )}
         
-        <h2 className="mb-4 text-xl font-semibold text-gray-800">Verification Successful!</h2>
+        <h2 className={`mb-4 ${simplified ? "text-xl font-semibold text-white" : "text-xl font-semibold text-gray-800"}`}>Verification Successful!</h2>
         
-        <div className="w-16 h-16 mb-4 bg-green-100 rounded-full flex items-center justify-center">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <div className={`w-16 h-16 mb-4 ${simplified ? "bg-white" : "bg-green-100"} rounded-full flex items-center justify-center`}>
+          <svg className={`w-10 h-10 ${simplified ? "text-blue-500" : "text-green-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
         
-        <p className="mb-4 text-center text-gray-600">
+        <p className={`mb-4 text-center ${simplified ? "text-white" : "text-gray-600"}`}>
           Your passport has been successfully verified.
         </p>
         
-        <div className="p-4 mb-4 bg-gray-50 rounded-lg w-full">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Verified Information</h3>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex justify-between">
-              <span>Name:</span>
-              <span className="font-medium">{verificationData.name}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Nationality:</span>
-              <span className="font-medium">{verificationData.nationality}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Age Verification:</span>
-              <span className="font-medium">{verificationData.above18 ? 'Over 18' : 'Under 18'}</span>
-            </li>
-          </ul>
-        </div>
-        
-        <p className="text-xs text-center text-gray-500">
-          Verification ID: {verificationData.verificationProof.substring(0, 8)}...
-        </p>
-        
-        <div className="flex flex-col gap-3 mt-4 w-full">
-          <button 
-            onClick={() => onVerifiedAction(verificationData)}
-            className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Continue to Next Step
-          </button>
-        </div>
+        {!simplified && (
+          <>
+            <div className="p-4 mb-4 bg-gray-50 rounded-lg w-full">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Verified Information</h3>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex justify-between">
+                  <span>Name:</span>
+                  <span className="font-medium">{verificationData.name}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Nationality:</span>
+                  <span className="font-medium">{verificationData.nationality}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Age Verification:</span>
+                  <span className="font-medium">{verificationData.above18 ? 'Over 18' : 'Under 18'}</span>
+                </li>
+              </ul>
+            </div>
+            
+            <p className="text-xs text-center text-gray-500">
+              Verification ID: {verificationData.verificationProof.substring(0, 8)}...
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -734,23 +732,23 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
   if (window.selfProofVerified && !isVerified) {
     console.log('⚠️ Rendering WebSocket verified UI with manual continue option');
     return (
-      <div className="relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md">
-        <h2 className="mb-4 text-xl font-semibold text-gray-800">Verification Detected!</h2>
+      <div className={simplified ? "text-center" : "relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md"}>
+        <h2 className={`mb-4 ${simplified ? "text-xl font-semibold text-white" : "text-xl font-semibold text-gray-800"}`}>Verification Detected!</h2>
         
-        <div className="w-16 h-16 mb-4 bg-green-100 rounded-full flex items-center justify-center">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <div className={`w-16 h-16 mb-4 ${simplified ? "bg-white" : "bg-green-100"} rounded-full flex items-center justify-center`}>
+          <svg className={`w-10 h-10 ${simplified ? "text-blue-500" : "text-green-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
         
-        <p className="mb-4 text-center text-gray-600">
+        <p className={`mb-4 text-center ${simplified ? "text-white" : "text-gray-600"}`}>
           {isProcessing 
             ? `Fetching your verification details...`
-            : "Your passport verification was detected through WebSocket, but we couldn't fetch the verification details from the API."}
+            : "Your passport verification was detected, but we couldn't fetch the details."}
         </p>
         
         {error && (
-          <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+          <div className={`p-3 mb-4 text-sm ${simplified ? "text-white/90 bg-white/10" : "text-red-700 bg-red-100"} rounded-lg`}>
             {error}
           </div>
         )}
@@ -759,13 +757,13 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
           <div className="flex flex-col gap-3 mt-4 w-full">
             <button 
               onClick={retryVerification}
-              className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className={`w-full px-4 py-2 font-medium ${simplified ? "text-blue-600 bg-white" : "text-white bg-blue-600"} rounded-lg hover:opacity-90 transition-opacity`}
             >
               Retry Verification
             </button>
             <button 
               onClick={handleManualContinue}
-              className="w-full px-4 py-2 font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className={`w-full px-4 py-2 font-medium ${simplified ? "text-white bg-white/20" : "text-gray-700 bg-gray-100"} rounded-lg hover:opacity-90 transition-opacity`}
             >
               Continue Without Details
             </button>
@@ -773,31 +771,37 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
         )}
         
         {isProcessing && (
-          <div className="w-8 h-8 mt-4 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+          <div className={`w-8 h-8 mt-4 border-4 ${simplified ? "border-t-white border-white/30" : "border-t-blue-500 border-gray-200"} rounded-full animate-spin`}></div>
         )}
       </div>
     );
   }
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md">
-      <h2 className="mb-4 text-xl font-semibold text-gray-800">Passport Verification</h2>
+    <div className={simplified ? "" : "relative flex flex-col items-center justify-center w-full max-w-md p-6 mx-auto bg-white border border-gray-200 rounded-lg shadow-md"}>
+      {!simplified && (
+        <h2 className="mb-4 text-xl font-semibold text-gray-800">Passport Verification</h2>
+      )}
       
       {isProcessing ? (
         <div className="flex flex-col items-center justify-center space-y-2">
-          <div className="w-8 h-8 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Processing verification...</p>
+          <div className={`w-8 h-8 border-4 ${simplified ? "border-t-white border-white/30" : "border-t-blue-500 border-gray-200"} rounded-full animate-spin`}></div>
+          <p className={simplified ? "text-white" : "text-gray-600"}>Processing verification...</p>
         </div>
       ) : (
         <>
-          <p className="mb-4 text-center text-gray-600">
-            Scan the QR code with your Self app to verify your passport details.
-          </p>
+          {!simplified && (
+            <p className="mb-4 text-center text-gray-600">
+              Scan the QR code with your Self app to verify your passport details.
+            </p>
+          )}
           
-          <div className="p-4 mb-4 bg-gray-100 rounded-lg">
+          <div className={simplified ? "qr-code-container" : "p-4 mb-4 bg-gray-100 rounded-lg"}>
             {selfApp && (
               <>
-                <p className="text-xs text-gray-500 mb-2">QR Code ready for scanning</p>
+                {!simplified && (
+                  <p className="text-xs text-gray-500 mb-2">QR Code ready for scanning</p>
+                )}
                 <SelfQRcodeWrapper
                   selfApp={selfApp}
                   onSuccess={() => {
@@ -832,52 +836,56 @@ export default function PassportVerification({ onVerifiedAction }: PassportVerif
                     // Call the callback with fallback data
                     onVerifiedAction(fallbackData);
                   }}
-                  size={250}
+                  size={simplified ? 210 : 250}
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  Scan with Self app to verify your identity
-                </p>
+                {!simplified && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Scan with Self app to verify your identity
+                  </p>
+                )}
               </>
             )}
           </div>
           
-          {/* Add manual verification button for testing */}
-          <button
-            onClick={() => {
-              console.log('Verification triggered');
-              
-              // Create test verification data
-              const testData: PassportVerificationData = {
-                isHuman: true,
-                name: "Test User",
-                nationality: "United States",
-                dateOfBirth: "1990-01-01",
-                gender: "Other",
-                passportNumber: "A12345678",
-                issuingState: "USA",
-                expiryDate: "2030-01-01",
-                above18: true,
-                fromEU: false,
-                notOnOFACList: true,
-                timestamp: new Date().toISOString(),
-                verificationProof: "manual-test",
-                userId: userId || ""
-              };
-              
-              // Set verified state and data
-              setVerificationData(testData);
-              setIsVerified(true);
-              
-              // Call the callback with test data
-              onVerifiedAction(testData);
-            }}
-            className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors mb-4"
-          >
-            Test Verification (Debug)
-          </button>
+          {/* Show debug button only in non-simplified mode */}
+          {!simplified && (
+            <button
+              onClick={() => {
+                console.log('Verification triggered');
+                
+                // Create test verification data
+                const testData: PassportVerificationData = {
+                  isHuman: true,
+                  name: "Test User",
+                  nationality: "United States",
+                  dateOfBirth: "1990-01-01",
+                  gender: "Other",
+                  passportNumber: "A12345678",
+                  issuingState: "USA",
+                  expiryDate: "2030-01-01",
+                  above18: true,
+                  fromEU: false,
+                  notOnOFACList: true,
+                  timestamp: new Date().toISOString(),
+                  verificationProof: "manual-test",
+                  userId: userId || ""
+                };
+                
+                // Set verified state and data
+                setVerificationData(testData);
+                setIsVerified(true);
+                
+                // Call the callback with test data
+                onVerifiedAction(testData);
+              }}
+              className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors mb-4"
+            >
+              Test Verification (Debug)
+            </button>
+          )}
           
           {error && (
-            <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+            <div className={`p-3 mb-4 text-sm ${simplified ? "text-white/90 bg-white/10" : "text-red-700 bg-red-100"} rounded-lg`}>
               {error}
             </div>
           )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, TouchEvent } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 
 // Existing components
@@ -72,6 +72,8 @@ export default function Home() {
   const [passportData, setPassportData] = useState<PassportData | null>(null);
   const [poaps, setPoaps] = useState<POAP[]>([]);
   const [isQRSheetOpen, setIsQRSheetOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   const [proofSettings] = useState<ProofSettings>({
     showName: false,
     showNationality: true,
@@ -84,17 +86,21 @@ export default function Home() {
     showIsAdult: true,
     showNotOnSanctionsList: true,
   });
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   // Use effect for wallet connection state changes
   useEffect(() => {
-    // Don't automatically proceed to next step
-    // Let user explicitly move to next step after connecting wallet
-  }, [isConnected]);
-
-  // Manual advancement to next step
-  const proceedToNextStep = () => {
-    setCurrentStep(prevStep => prevStep + 1);
-  };
+    // Automatically proceed to next step when wallet is connected
+    if (isConnected && currentStep === AppStep.ConnectWallet) {
+      // Add a small delay to make the transition feel smoother
+      const timer = setTimeout(() => {
+        setCurrentStep(AppStep.VerifyPassport);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, currentStep]);
 
   // Handle passport verification
   const handlePassportVerified = (data: PassportVerificationData) => {
@@ -147,130 +153,231 @@ export default function Home() {
     setIsQRSheetOpen(true);
   };
 
+  // Toggle avatar menu
+  const toggleAvatarMenu = () => {
+    setIsAvatarMenuOpen(!isAvatarMenuOpen);
+  };
+
+  // Toggle bottom sheet expansion
+  const toggleBottomSheet = () => {
+    setIsBottomSheetExpanded(!isBottomSheetExpanded);
+  };
+
+  // Handle touch interactions for the bottom sheet
+  const handleTouchStart = (e: TouchEvent) => {
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (touchStartY === null || !sheetRef.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - touchStartY;
+
+    // If dragging down and sheet is expanded, or dragging up and sheet is collapsed
+    if ((diff > 50 && isBottomSheetExpanded) || (diff < -50 && !isBottomSheetExpanded)) {
+      setTouchStartY(null); // Reset touch position
+      setIsBottomSheetExpanded(!isBottomSheetExpanded);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStartY(null);
+  };
+
+  // Avatar Menu Component
+  const AvatarMenu = () => {
+    if (!isConnected || !address) return null;
+    
+    return (
+      <div className="relative">
+        <button 
+          onClick={toggleAvatarMenu}
+          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+          aria-label="User menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
+            <path fillRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" clipRule="evenodd" />
+          </svg>
+        </button>
+        
+        {isAvatarMenuOpen && (
+          <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg py-1 z-20">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="font-medium">Verified Traveler</div>
+                  <div className="text-xs text-gray-500">Passport verified via Self Protocol</div>
+                </div>
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                <p><span className="font-medium">Status:</span> Verified via ZK Proof</p>
+                <p className="mb-2"><span className="font-medium">Time:</span> {passportData?.timestamp ? new Date(passportData.timestamp).toLocaleString() : 'Unknown'}</p>
+                
+                <p className="font-medium mb-1">Disclosed Information:</p>
+                <ul className="space-y-1">
+                  {passportData?.isHuman && <li className="text-sm flex items-center">
+                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                    </svg>
+                    Real Human
+                  </li>}
+                  {passportData?.above18 && <li className="text-sm flex items-center">
+                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                    </svg>
+                    Above 18 years old
+                  </li>}
+                  {passportData?.notOnOFACList && <li className="text-sm flex items-center">
+                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                    </svg>
+                    Not on OFAC list
+                  </li>}
+                </ul>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                disconnect();
+                setCurrentStep(AppStep.ConnectWallet);
+                setIsPassportVerified(false);
+                setPassportData(null);
+                setIsAvatarMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Disconnect Wallet
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render the appropriate step
   const renderStep = () => {
     switch (currentStep) {
       case AppStep.ConnectWallet:
         return (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold mb-2">Connect Your Wallet</h2>
-              <p className="text-gray-600">Connect your wallet to get started with Stamper</p>
+          <div className="app-background">
+            <div className="flex flex-col items-center justify-center w-full h-full mx-auto">
+              {/* Logo and name container */}
+              <div className="flex items-center justify-center mb-8 w-full px-4">
+                <div className="flex items-center w-[85%] max-w-[400px] justify-center">
+                  <img src="/logo.svg" alt="zkStamps Logo" className="app-logo mb-0 mr-3" />
+                  <h1 className="text-5xl font-bold text-white">zkStamps</h1>
+                </div>
+              </div>
+              <div className="w-full max-w-md flex justify-center px-4">
+                <WalletConnection />
+              </div>
             </div>
-            <WalletConnection />
-            
-            {isConnected && (
-              <button
-                onClick={proceedToNextStep}
-                className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-              >
-                Continue to Passport Verification
-              </button>
-            )}
           </div>
         );
       
       case AppStep.VerifyPassport:
         return (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold mb-2">Verify Your Passport</h2>
-              <p className="text-gray-600">Scan the QR code with the Self app to verify your passport</p>
+          <div className="app-background">
+            <div className="absolute top-4 right-4 z-10">
+              <AvatarMenu />
             </div>
-            <div className="w-full max-w-md">
-              <PassportVerification onVerifiedAction={handlePassportVerified} />
+            <div className="flex flex-col items-center justify-center w-full h-full mx-auto">
+              <div className="verification-card">
+                <h2 className="text-2xl font-bold mb-4 text-white">Welcome to zkStamps</h2>
+                <p className="text-white/80 mb-8">
+                  Scan the QR code with your Self app to verify your passport.
+                </p>
+                <div className="flex-1 flex items-center justify-center w-full">
+                  <PassportVerification 
+                    onVerifiedAction={handlePassportVerified} 
+                    simplified={true}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
       
       case AppStep.Home:
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main content - Globe + QR button */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white p-6 rounded-lg shadow-md relative">
-                <h2 className="text-xl font-bold mb-4">Your Global Travels</h2>
-                <div className="h-[500px] w-full">
-                  <WorldGlobe poaps={poaps} />
-                </div>
-                
-                {/* QR Code Button */}
+          <div className="home-page-container">
+            {/* Navigation bar */}
+            <div className="main-nav">
+              <div className="nav-logo">
+                <img src="/logo.svg" alt="zkStamps" />
+                <span>zkStamps</span>
+              </div>
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={handleOpenQRSheet}
-                  className="absolute bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-all"
-                  aria-label="Show QR code"
+                  className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
                   </svg>
                 </button>
+                <AvatarMenu />
               </div>
-              
-              {/* Travel verification section */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold mb-4">Check In to a Location</h2>
+            </div>
+            
+            {/* Full-screen map */}
+            <div className="map-container">
+              <WorldGlobe poaps={poaps} />
+            </div>
+            
+            {/* Bottom sheet */}
+            <div 
+              ref={sheetRef}
+              className={`bottom-sheet ${isBottomSheetExpanded ? 'expanded' : ''}`}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div 
+                className="sheet-header" 
+                onClick={toggleBottomSheet}
+              >
+                <div className="sheet-handle"></div>
+                <div className="text-center text-xs text-gray-400 mt-1 mb-2">
+                  {isBottomSheetExpanded ? 'Swipe down to minimize' : 'Swipe up for more'}
+                </div>
+              </div>
+              <div className="sheet-content">
+                {/* Upcoming Trips - Using the UpcomingTrips component */}
+                <h2 className="section-title">Upcoming Trip</h2>
+                <UpcomingTrips />
+                
+                {/* Trip Suggestions - Using the TripSuggestions component */}
+                <h2 className="section-title">Trip Suggestions</h2>
+                <TripSuggestions />
+                
+                {/* POAPs Collected - Using the POAPCollection component */}
+                <h2 className="section-title">POAPs Collected</h2>
+                <POAPCollection poaps={poaps} />
+                
+                {/* Travel Verification - Using the TravelVerification component */}
+                <h2 className="section-title">Travel Verification</h2>
                 <TravelVerification 
                   isPassportVerified={isPassportVerified} 
                   onPoapMinted={handlePoapMinted}
                 />
-              </div>
-              
-              {/* Travel stats and POAP collection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h2 className="text-xl font-bold mb-4">Travel Stats</h2>
-                  <TravelStats poaps={poaps} />
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h2 className="text-xl font-bold mb-4">Countries Visited</h2>
-                  <POAPCollection poaps={poaps} />
-                </div>
-              </div>
-            </div>
-            
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* User profile section */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-blue-600">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-bold">Verified Traveler</h3>
-                    <p className="text-sm text-gray-500">Passport verified via Self Protocol</p>
-                  </div>
-                </div>
                 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p><strong>Status:</strong> Verified via ZK Proof</p>
-                  <p><strong>Time:</strong> {passportData?.timestamp ? new Date(passportData.timestamp).toLocaleString() : 'Unknown'}</p>
-                  
-                  <div className="mt-4 space-y-2">
-                    <h3 className="font-medium">Disclosed Information:</h3>
-                    <ul className="space-y-1">
-                      {passportData?.isHuman && <li className="text-sm">✅ Real Human</li>}
-                      {passportData?.fromEU && <li className="text-sm">✅ From EU</li>}
-                      {passportData?.above18 && <li className="text-sm">✅ Above 18 years old</li>}
-                      {passportData?.notOnOFACList && <li className="text-sm">✅ Not on OFAC list</li>}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Upcoming trips */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold mb-4">Upcoming Trips</h2>
-                <UpcomingTrips />
-              </div>
-              
-              {/* Trip suggestions */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold mb-4">Trip Suggestions</h2>
-                <TripSuggestions />
+                {/* Stats - Using the TravelStats component */}
+                <h2 className="section-title">Places you&apos;ve seen</h2>
+                <TravelStats poaps={poaps} />
+                
+                {/* Add Trip Button */}
+                <button className="add-trip-button">
+                  + Add Trip
+                </button>
               </div>
             </div>
           </div>
@@ -296,49 +403,9 @@ export default function Home() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <header className="text-center mb-8 relative">
-        <h1 className="text-4xl font-bold mb-2">Stamper</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Privacy-preserving passport verification and travel POAP collector.
-          Verify your identity with zero-knowledge proofs and collect POAPs for your travels.
-        </p>
-        
-        {isConnected && (
-          <div className="absolute right-0 top-0">
-            <button
-              onClick={() => {
-                disconnect();
-                // Reset to connect wallet step
-                setCurrentStep(AppStep.ConnectWallet);
-                // Reset verification state
-                setIsPassportVerified(false);
-                setPassportData(null);
-              }}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-              Disconnect {address ? `${address.substring(0, 4)}...${address.substring(address.length - 4)}` : ''}
-            </button>
-          </div>
-        )}
-      </header>
-
+    <main className="w-full h-full">
       {renderStep()}
       {renderQRSheet()}
-      
-      <footer className="mt-16 text-center text-gray-500 text-sm">
-        <p>
-          Built with Self Protocol for zero-knowledge proofs and Celo for blockchain transactions.
-        </p>
-        <p className="mt-1">
-          © {new Date().getFullYear()} Stamper - All rights reserved
-        </p>
-      </footer>
     </main>
   );
 }

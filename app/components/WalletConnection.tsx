@@ -39,9 +39,9 @@ export default function WalletConnection() {
   if (!mounted) return null;
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center justify-center w-full">
       {error ? (
-        <div className="p-3 bg-red-100 text-red-800 rounded-md mb-3 text-sm">
+        <div className="p-3 bg-red-100 text-red-800 rounded-md mb-3 text-sm w-full max-w-md">
           <p>Error connecting wallet: {error}</p>
           <button 
             onClick={() => setError(null)} 
@@ -53,22 +53,67 @@ export default function WalletConnection() {
       ) : null}
       
       {!hasProjectId ? (
-        <div className="p-3 bg-yellow-100 text-yellow-800 rounded-md mb-3 text-sm">
+        <div className="p-3 bg-yellow-100 text-yellow-800 rounded-md mb-3 text-sm w-full max-w-md">
           <p>WalletConnect Project ID missing. Wallet connections may not work properly.</p>
         </div>
       ) : null}
       
-      <ConnectButton 
-        chainStatus="icon" 
-        showBalance={false}
-        accountStatus={{
-          smallScreen: 'avatar',
-          largeScreen: 'full',
+      {/* Custom styled connect button for simpler UI */}
+      <ConnectButton.Custom>
+        {({
+          account,
+          chain,
+          openAccountModal,
+          openConnectModal,
+          mounted: mountedButton,
+        }) => {
+          const ready = mounted && mountedButton;
+          const connected = ready && account && chain;
+          
+          return (
+            <div
+              {...(!ready && {
+                'aria-hidden': true,
+                style: {
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                },
+              })}
+              className="flex justify-center w-full"
+            >
+              {(() => {
+                if (!connected) {
+                  return (
+                    <button 
+                      onClick={openConnectModal} 
+                      type="button"
+                      className="connect-wallet-btn"
+                    >
+                      Connect wallet
+                    </button>
+                  );
+                }
+
+                return (
+                  <div className="flex items-center justify-center w-full">
+                    <button
+                      onClick={openAccountModal}
+                      type="button"
+                      className="connect-wallet-btn"
+                    >
+                      {account.displayName}
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+          );
         }}
-      />
+      </ConnectButton.Custom>
       
       {isConnected && (
-        <div className="mt-2 text-sm text-green-600">
+        <div className="mt-2 text-sm text-white font-medium text-center">
           ✅ Wallet connected
         </div>
       )}
