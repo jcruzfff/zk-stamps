@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, TouchEvent } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
+import Image from 'next/image';
 
 // Existing components
 import WalletConnection from './components/WalletConnection';
@@ -89,18 +90,59 @@ export default function Home() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
+  // Check for saved verification data on component mount
+  useEffect(() => {
+    // Only run this on the client side
+    if (typeof window === 'undefined') return;
+    
+    try {
+      // Check if we have stored passport verification data
+      const storedPassportData = localStorage.getItem('passportData');
+      const storedVerificationStatus = localStorage.getItem('isPassportVerified');
+      
+      if (storedPassportData && storedVerificationStatus === 'true') {
+        const parsedData = JSON.parse(storedPassportData) as PassportData;
+        
+        // Validate the data has required fields
+        if (parsedData && parsedData.verificationProof) {
+          console.log('Found stored passport verification data');
+          
+          // Update state with stored data
+          setPassportData(parsedData);
+          setIsPassportVerified(true);
+          
+          // If wallet is connected, skip to home page
+          if (isConnected) {
+            setCurrentStep(AppStep.Home);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error retrieving stored passport data:', error);
+      // If there's an error, clear the stored data to prevent future issues
+      localStorage.removeItem('passportData');
+      localStorage.removeItem('isPassportVerified');
+    }
+  }, [isConnected]);
+
   // Use effect for wallet connection state changes
   useEffect(() => {
     // Automatically proceed to next step when wallet is connected
     if (isConnected && currentStep === AppStep.ConnectWallet) {
-      // Add a small delay to make the transition feel smoother
-      const timer = setTimeout(() => {
-        setCurrentStep(AppStep.VerifyPassport);
-      }, 500);
-      
-      return () => clearTimeout(timer);
+      // If already verified, skip to Home
+      if (isPassportVerified && passportData) {
+        setCurrentStep(AppStep.Home);
+      } else {
+        // Otherwise, go to verification step
+        // Add a small delay to make the transition feel smoother
+        const timer = setTimeout(() => {
+          setCurrentStep(AppStep.VerifyPassport);
+        }, 500);
+        
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isConnected, currentStep]);
+  }, [isConnected, currentStep, isPassportVerified, passportData]);
 
   // Handle passport verification
   const handlePassportVerified = (data: PassportVerificationData) => {
@@ -133,6 +175,12 @@ export default function Home() {
       };
       
       setPassportData(newPassportData);
+      
+      // Store verification data in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('passportData', JSON.stringify(newPassportData));
+        localStorage.setItem('isPassportVerified', 'true');
+      }
       
       // Go directly to Home step
       setCurrentStep(AppStep.Home);
@@ -183,6 +231,21 @@ export default function Home() {
 
   const handleTouchEnd = () => {
     setTouchStartY(null);
+  };
+
+  // Update the disconnect button to also clear localStorage
+  const handleDisconnect = () => {
+    disconnect();
+    setCurrentStep(AppStep.ConnectWallet);
+    setIsPassportVerified(false);
+    setPassportData(null);
+    setIsAvatarMenuOpen(false);
+    
+    // Clear stored verification data
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('passportData');
+      localStorage.removeItem('isPassportVerified');
+    }
   };
 
   // Avatar Menu Component
@@ -245,13 +308,7 @@ export default function Home() {
             </div>
             
             <button
-              onClick={() => {
-                disconnect();
-                setCurrentStep(AppStep.ConnectWallet);
-                setIsPassportVerified(false);
-                setPassportData(null);
-                setIsAvatarMenuOpen(false);
-              }}
+              onClick={handleDisconnect}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               Disconnect Wallet
@@ -272,7 +329,7 @@ export default function Home() {
               {/* Logo and name container */}
               <div className="flex items-center justify-center mb-8 w-full px-4">
                 <div className="flex items-center w-[85%] max-w-[400px] justify-center">
-                  <img src="/logo.svg" alt="zkStamps Logo" className="app-logo mb-0 mr-3" />
+                  <Image src="/logo.svg" alt="zkStamps Logo" width={60} height={60} className="app-logo mb-0 mr-3" />
                   <h1 className="text-5xl font-bold text-white">zkStamps</h1>
                 </div>
               </div>
@@ -312,7 +369,7 @@ export default function Home() {
             {/* Navigation bar */}
             <div className="main-nav">
               <div className="nav-logo">
-                <img src="/logo.svg" alt="zkStamps" />
+                <Image src="/logo.svg" alt="zkStamps" width={40} height={40} />
                 <span>zkStamps</span>
               </div>
               <div className="flex items-center gap-4">

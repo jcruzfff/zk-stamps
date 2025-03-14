@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Globe from 'react-globe.gl';
+import { useState, useEffect, useRef, MutableRefObject } from 'react';
+import Globe, { GlobeMethods } from 'react-globe.gl';
 
 type POAP = {
   id: string;
@@ -11,30 +11,31 @@ type POAP = {
   coordinates: [number, number];
   transactionHash: string;
   verificationProof: string;
+  city?: string;
+  distance?: number;
 };
 
 export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
-  const globeRef = useRef<any>();
+  const globeRef = useRef<GlobeMethods | null>(null);
   const [globeReady, setGlobeReady] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 300 });
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Update dimensions on mount and resize
   useEffect(() => {
-    if (containerRef.current) {
+    const updateDimensions = () => {
+      // Use window dimensions directly for proper sizing
       setDimensions({
-        width: containerRef.current.clientWidth,
-        height: 300,
+        width: window.innerWidth,
+        // Calculate height based on viewport - add extra to ensure fullness
+        height: window.innerHeight * 1.2
       });
-    }
+    };
+
+    updateDimensions();
 
     const handleResize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: 300,
-        });
-      }
+      updateDimensions();
     };
 
     window.addEventListener('resize', handleResize);
@@ -45,8 +46,8 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
   const markers = poaps.map(poap => ({
     lat: poap.coordinates[0],
     lng: poap.coordinates[1],
-    size: 0.8,
-    color: '#4B56DB', // Blue color from mockup
+    size: 2, // Larger marker size for better visibility
+    color: '#4BB4F1',
     country: poap.country,
     countryCode: poap.countryCode
   }));
@@ -55,35 +56,51 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
     if (globeRef.current && globeReady) {
       // Auto-rotate the globe slowly
       globeRef.current.controls().autoRotate = true;
-      globeRef.current.controls().autoRotateSpeed = 0.5;
+      globeRef.current.controls().autoRotateSpeed = 0.3;
       
-      // Position camera
-      globeRef.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 });
+      // Adjust camera position to show more land mass and fill screen better
+      globeRef.current.pointOfView({
+        lat: 20,  // More north-facing view to show continents
+        lng: 20,   // Centered longitude
+        altitude: 3  // Closer view to fill more of the screen
+      });
+      
+      // Additional globe settings for better visuals
+      if (globeRef.current.controls) {
+        // Disable zoom to maintain the perfect view
+        globeRef.current.controls().enableZoom = false;
+        // Make rotation smoother
+        globeRef.current.controls().enableDamping = true;
+        globeRef.current.controls().dampingFactor = 0.2;
+      }
     }
   }, [globeReady]);
 
   return (
-    <div ref={containerRef} className="w-full h-[300px] relative">
-      {dimensions.width > 0 && (
-        <Globe
-          ref={globeRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-          backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-          pointsData={markers}
-          pointLabel="country"
-          pointLat="lat"
-          pointLng="lng"
-          pointColor="color"
-          pointRadius="size"
-          pointAltitude={0.01}
-          onGlobeReady={() => setGlobeReady(true)}
-          atmosphereColor="#B3D9FF" // Light blue atmosphere
-          backgroundColor="rgba(255,255,255,0)"
-        />
+    <div ref={containerRef} className="globe-container">
+      {dimensions.width > 0 && dimensions.height > 0 && (
+        <div className="globe-wrapper">
+          <Globe
+            ref={globeRef as MutableRefObject<GlobeMethods | undefined>}
+            width={dimensions.width}
+            height={dimensions.height}
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+            backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+            pointsData={markers}
+            pointLabel="country"
+            pointLat="lat"
+            pointLng="lng"
+            pointColor="color"
+            pointRadius="size"
+            pointAltitude={0.01}
+            onGlobeReady={() => setGlobeReady(true)}
+            atmosphereColor="#B3D9FF" // Light blue atmosphere
+            backgroundColor="rgba(0,0,0,0)"
+            pointsMerge={true} // Improve performance
+          />
+        </div>
       )}
     </div>
   );
-} 
+}
