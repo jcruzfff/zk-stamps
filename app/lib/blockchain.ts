@@ -2,11 +2,7 @@ import { createPublicClient, createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celoAlfajores, celo } from 'viem/chains';
 
-// Debug environment variables
-console.log('🔄 [Blockchain] Loading environment variables:');
-console.log('🔄 [Blockchain] NODE_ENV =', process.env.NODE_ENV);
-console.log('🔄 [Blockchain] NEXT_PUBLIC_ENV =', process.env.NEXT_PUBLIC_ENV);
-console.log('🔄 [Blockchain] POAP_CONTRACT_ADDRESS =', process.env.POAP_CONTRACT_ADDRESS);
+
 
 // Environment variable for the private key (in production, use secure environment variables)
 // NEVER hardcode private keys in your code
@@ -301,9 +297,7 @@ export const getCountriesVisitedByUser = async (
     });
     
     // Call the smart contract to get countries visited by the user
-    console.log('🔄 [Blockchain] Calling contract to get countries visited');
-    console.log('🔄 [Blockchain] Contract address:', POAP_CONTRACT_ADDRESS);
-    console.log('🔄 [Blockchain] User address:', userAddress);
+   
     
     const countriesVisited = await client.readContract({
       address: POAP_CONTRACT_ADDRESS as `0x${string}`,

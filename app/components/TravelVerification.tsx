@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import Image from 'next/image';
 
@@ -98,6 +98,7 @@ export default function TravelVerification({
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'scanning' | 'verifying' | 'success' | 'error'>('idle');
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'requesting' | 'success' | 'error'>('idle');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [poaps, setPoaps] = useState<POAP[]>([]);
   const [selectedPoap, setSelectedPoap] = useState<POAP | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -176,26 +177,37 @@ export default function TravelVerification({
         verificationProof: `proof-${Date.now()}`
       };
       
-      console.log('🔶 [TravelVerification] Created new POAP object:', newPoap);
+  
       
       // Use a function to update state to avoid closure issues
       setPoaps(prevPoaps => {
-        console.log('🔶 [TravelVerification] Previous POAPs:', prevPoaps);
-        const updatedPoaps = [...prevPoaps, newPoap];
-        console.log('🔶 [TravelVerification] Updated POAPs array:', updatedPoaps);
+       
+        
+        // Check if this POAP already exists (based on countryCode)
+        const poapExists = prevPoaps.some(p => p.countryCode.toLowerCase() === newPoap.countryCode.toLowerCase());
+        
+        // Only add if it doesn't exist
+        const updatedPoaps = poapExists ? prevPoaps : [...prevPoaps, newPoap];
+        
+      
         
         // Store in localStorage for persistence
         if (typeof window !== 'undefined') {
-          console.log('🔶 [TravelVerification] Storing POAPs in localStorage');
+          
           try {
-            localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
-            console.log('🔶 [TravelVerification] Successfully stored in localStorage');
-            
-            // Dispatch custom events to notify other components
-            window.dispatchEvent(new Event('storage-updated'));
-            window.dispatchEvent(new Event('poap-minted'));
-          } catch (storageError) {
-            console.error('🔴 [TravelVerification] Error storing in localStorage:', storageError);
+            // Ensure we don't have duplicates in localStorage either
+            if (!poapExists) {
+              localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
+              console.log('🔶 [TravelVerification] Successfully stored in localStorage');
+              
+              // Dispatch custom events to notify other components
+              window.dispatchEvent(new Event('storage-updated'));
+              window.dispatchEvent(new Event('poap-minted'));
+            } else {
+             
+            }
+          } catch  {
+           
           }
         }
         
@@ -208,7 +220,7 @@ export default function TravelVerification({
       
       // Notify parent component about the new POAP
       if (onPoapMinted) {
-        console.log('🔶 [TravelVerification] Notifying parent component of new POAP');
+      
         onPoapMinted(newPoap);
       }
       
@@ -221,7 +233,7 @@ export default function TravelVerification({
     }
     
     if (isTransactionFailed) {
-      console.error('🔴 [TravelVerification] Transaction failed:', { writeError, txError });
+    
       const errorMsg = (writeError || txError)?.message || 'Failed to mint POAP';
       setErrorMessage(errorMsg);
       setVerificationStatus('error');
@@ -399,150 +411,115 @@ export default function TravelVerification({
     }
   }, [isNewCountry, isButtonVisible]);
 
-  // Function to check if user has already minted a POAP for the current country
-  const hasAlreadyMintedForCountry = async (countryCode: string | undefined): Promise<boolean> => {
-    console.log('🔍 [hasAlreadyMintedForCountry] Checking if POAP exists for', countryCode);
-    if (!countryCode || typeof window === 'undefined') return false;
+  // Function to check if a POAP already exists for this country
+  const hasAlreadyMintedForCountry = useCallback((countryCode: string) => {
+    // Only do this check if we have a valid country code
+    if (!countryCode) return false;
     
     try {
-      // Get POAPs from localStorage
+      // Normalize country code to lowercase for consistent comparison
+      const normalizedCode = countryCode.toLowerCase();
+      
+      // Look in localStorage first
       const storedPoaps = localStorage.getItem('poaps');
-      if (!storedPoaps) {
-        console.log('🔍 [hasAlreadyMintedForCountry] No POAPs found in localStorage');
-        return false;
+      
+      if (storedPoaps) {
+        const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+        
+        if (Array.isArray(parsedPoaps) && parsedPoaps.length > 0) {
+          // Check if this country code already exists
+          const exists = parsedPoaps.some(p => p.countryCode.toLowerCase() === normalizedCode);
+          
+      
+          
+          return exists;
+        }
       }
       
-      // Parse the stored POAPs
-      const poaps = JSON.parse(storedPoaps);
-      if (!Array.isArray(poaps) || poaps.length === 0) {
-        console.log('🔍 [hasAlreadyMintedForCountry] No valid POAPs array in localStorage');
-        return false;
-      }
+      return false;
+    } catch  {
       
-      // Check if any POAP matches the current country code (case insensitive)
-      const found = poaps.some(poap => 
-        poap.countryCode && poap.countryCode.toLowerCase() === countryCode.toLowerCase()
-      );
-      
-      if (found) {
-        console.log(`🔍 [hasAlreadyMintedForCountry] Found existing POAP for ${countryCode}`);
-      }
-      
-      return found;
-    } catch (error) {
-      console.error('🔴 [hasAlreadyMintedForCountry] Error checking for existing POAP:', error);
       return false;
     }
-  };
+  }, []);
 
-  // Check blockchain for already minted POAPs
+  // Check on the blockchain if this user has already minted a POAP for the detected country
   useEffect(() => {
-    // Only run if we have a wallet address
-    if (!isConnected || !address) return;
+    if (!isConnected || !address || !currentLocation) return;
     
-    const checkBlockchainPoaps = async () => {
-      try {
-        console.log('🔍 [TravelVerification] Checking blockchain for POAPs minted by', address);
-        
-        // If we have a current location, check if this user has already minted a POAP for this country
-        if (currentLocation) {
-          // Use the same function we use during minting to check for existing POAPs
-          const hasVisited = await hasAlreadyMintedForCountry(currentLocation.countryCode);
-          console.log(`🔍 [TravelVerification] Has visited ${currentLocation.country}:`, hasVisited);
-          
-          // Update the new country flag based on the check
-          setIsNewCountry(!hasVisited);
-        }
-      } catch (error) {
-        console.error('🔴 [TravelVerification] Error checking blockchain POAPs:', error);
-      }
-    };
+   
     
-    // Only run once when component mounts or when location changes
-    if (currentLocation) {
-      checkBlockchainPoaps();
-    }
-  }, [isConnected, address, currentLocation]);
+    // Update button text based on whether the user has already minted this POAP
+    setIsNewCountry(!hasAlreadyMintedForCountry(currentLocation.countryCode));
+  }, [isConnected, address, currentLocation, hasAlreadyMintedForCountry]);
 
-  // Legacy server-side verification method kept as fallback
+  // Handle storing a new POAP when minted
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const startVerification = async () => {
-    if (!isPassportVerified || !isConnected || !currentLocation) {
+  const handleStorePOAP = useCallback((countryCode: string, country: string, coordinates: [number, number]) => {
+    // Only proceed if we have valid data
+    if (!countryCode) {
+      console.error('Cannot store POAP: Missing country code');
       return;
     }
     
-    setVerificationStatus('scanning');
-    
-    // In a real app, this would be another Self Protocol QR code scan
-    // that would verify the passport again along with the location
-    setTimeout(async () => {
-      setVerificationStatus('verifying');
+    try {
+      // Normalize country code to lowercase
+      const normalizedCode = countryCode.toLowerCase();
       
-      try {
-        // Send the location data to the travel verification API
-        const response = await fetch('/api/travel-verify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: address,
-            ...currentLocation,
-            isPassportVerified,
-          }),
-        });
-        
-        // Parse the response as text first to handle non-JSON errors
-        const rawText = await response.text();
-        let data;
-        
-        try {
-          data = JSON.parse(rawText);
-        } catch (error) {
-          console.error('Failed to parse response:', error, rawText);
-          throw new Error(`Server returned invalid JSON: ${rawText.substring(0, 100)}...`);
+      // Check if this POAP already exists for this country
+      const alreadyExists = hasAlreadyMintedForCountry(normalizedCode);
+      
+      if (alreadyExists) {
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`POAP for ${country} already exists, not adding duplicate`);
         }
-        
-        if (!response.ok) {
-          throw new Error(data.message || `Server returned ${response.status}: ${response.statusText}`);
-        }
-        
-        if (data.success && data.poapData) {
-          // Store the POAP data
-          const newPoap: POAP = data.poapData;
-          
-          // Check if this is a simulated transaction in development
-          if (data.development) {
-            console.log('Using simulated transaction in development mode');
-          } else {
-            console.log('Real blockchain transaction confirmed:', data.poapData.transactionHash);
-          }
-          
-          // Store in localStorage for persistence
-          const updatedPoaps = [...poaps, newPoap];
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
-          }
-          
-          setPoaps(updatedPoaps);
-          setSelectedPoap(newPoap);
-          setVerificationStatus('success');
-          setIsNewCountry(false); // Reset the new country status
-          
-          // Notify parent component about the new POAP
-          if (onPoapMinted) {
-            onPoapMinted(newPoap);
-          }
-        } else {
-          throw new Error(data.message || 'Failed to mint POAP');
-        }
-      } catch (error) {
-        console.error('Error verifying travel:', error);
-        setErrorMessage((error as Error).message);
-        setVerificationStatus('error');
+        return; // Don't add duplicates
       }
-    }, 3000);
-  };
+      
+      // Create a new POAP object
+      const newPOAP: POAP = {
+        id: `${normalizedCode}-${Date.now()}`,
+        country: country,
+        countryCode: normalizedCode,
+        timestamp: new Date().toISOString(),
+        coordinates: coordinates,
+        transactionHash: `tx-${Date.now()}`, // In a real app, this would be the actual transaction hash
+        verificationProof: `proof-${Date.now()}` // Placeholder for proof
+      };
+      
+      // Update localStorage
+      const storedPoaps = localStorage.getItem('poaps');
+      let updatedPoaps: POAP[] = [];
+      
+      if (storedPoaps) {
+        const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+        // Create a new array with the previous POAPs and the new one
+        updatedPoaps = [...parsedPoaps, newPOAP];
+      } else {
+        // First POAP
+        updatedPoaps = [newPOAP];
+      }
+      
+      // Store in localStorage
+      localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
+      
+      // Dispatch storage event to notify other components
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('poap-minted'));
+      
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`POAP for ${country} added successfully`);
+      }
+      
+      // Update button state to reflect the new POAP
+      setIsNewCountry(false);
+      
+    } catch (error) {
+      console.error('Error storing POAP:', error);
+    }
+  }, [hasAlreadyMintedForCountry]);
 
   /**
    * Request a POAP mint - this will now be done directly from the user's wallet
@@ -552,12 +529,12 @@ export default function TravelVerification({
     
     // Only proceed if all conditions are met
     if (verificationStatus !== 'idle' || !isConnected || !currentLocation || !address || !isPassportVerified) {
-      console.log("Conditions not met - returning early");
+    
       return;
     }
 
     // Check if the user already has a POAP for this country
-    const alreadyMinted = await hasAlreadyMintedForCountry(currentLocation.countryCode);
+    const alreadyMinted = hasAlreadyMintedForCountry(currentLocation.countryCode);
     if (alreadyMinted) {
       console.log(`Already minted a POAP for ${currentLocation.country}`);
       

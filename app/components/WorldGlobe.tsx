@@ -61,15 +61,14 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
 
   // Convert POAPs to markers
   const markers = poaps.map(poap => {
-    console.log(`POAP for ${poap.country}:`, poap.coordinates); // Debugging log
-    
+    // Remove repetitive logs
     // Check if the country is the US and provide correct coordinates if needed
     let coordinates = poap.coordinates;
     
     // If this is the US and coordinates look incorrect (in the ocean), use fallback
     if (poap.countryCode.toLowerCase() === 'us' && 
         (Math.abs(poap.coordinates[0]) < 10 || Math.abs(poap.coordinates[1]) < 20)) {
-      console.log('Using fallback coordinates for US');
+      // Remove this excessive logging
       coordinates = [37.0902, -95.7129]; // Geographic center of US
     }
     

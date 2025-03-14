@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAccount } from 'wagmi';
@@ -53,157 +53,221 @@ export default function POAPCollection() {
   const { isConnected, address } = useAccount();
   const [displayedPoaps, setDisplayedPoaps] = useState<POAP[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState<string>('');
   
+  // Add a ref to track if a refresh is in progress
+  const isRefreshing = useRef(false);
+  // Add a ref to track if we've already logged the fetch
+  const hasFetched = useRef(false);
+
   // Function to refresh POAPs from localStorage
   const refreshFromLocalStorage = useCallback(() => {
-    // Don't refresh too frequently (at most once every 500ms)
-    const now = Date.now();
-    if (now - lastRefreshTime < 500) {
-      return;
-    }
+    // Only log once at component mount, not on every refresh
+    // if (process.env.NODE_ENV === 'development' && !isRefreshing.current) {
+    //   console.log('[POAPCollection] Refreshing from localStorage');
+    // }
     
-    setLastRefreshTime(now);
-    console.log('[POAPCollection] Refreshing from localStorage');
+    isRefreshing.current = true;
+    setIsLoading(true);
     
-    if (typeof window !== 'undefined') {
-      const storedPoapsString = localStorage.getItem('poaps');
-      
-      if (storedPoapsString) {
-        try {
-          const storedPoaps = JSON.parse(storedPoapsString) as POAP[];
-          
-          if (Array.isArray(storedPoaps) && storedPoaps.length > 0) {
-            // Normalize all country codes to lowercase 
-            const normalizedPoaps = storedPoaps.map(poap => ({
-              ...poap,
-              countryCode: poap.countryCode.toLowerCase()
-            }));
-            
-            console.log('[POAPCollection] Updating display with POAPs from localStorage:', normalizedPoaps);
-            setDisplayedPoaps(normalizedPoaps);
+    // Get POAPs from localStorage
+    try {
+      const storedPoaps = localStorage.getItem('poaps');
+      if (storedPoaps) {
+        const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+        
+        // Create a deduplicated array
+        const uniquePoaps: POAP[] = [];
+        const addedCountryCodes = new Set<string>();
+        
+        for (const poap of parsedPoaps) {
+          const countryCode = poap.countryCode.toLowerCase();
+          // Deduplicate by countryCode
+          if (!addedCountryCodes.has(countryCode)) {
+            uniquePoaps.push(poap);
+            addedCountryCodes.add(countryCode);
           }
-        } catch (error) {
-          console.error('[POAPCollection] Error parsing localStorage data:', error);
         }
-      }
-    }
-  }, [lastRefreshTime]);
 
-  // Fetch POAPs from blockchain if connected
-  useEffect(() => {
-    async function fetchPoaps() {
-      if (!isConnected || !address) {
-        console.log('[POAPCollection] Not connected to wallet, skipping fetch');
+        // Only log in development and when POAPs are actually found
+        // if (process.env.NODE_ENV === 'development' && uniquePoaps.length > 0) {
+        //   console.log('[POAPCollection] Updating display with POAPs from localStorage:', uniquePoaps);
+        // }
+        
+        setTimeout(() => {
+          setDisplayedPoaps(uniquePoaps);
+          setIsLoading(false);
+          isRefreshing.current = false;
+          setLastUpdateTimestamp(new Date().toISOString());
+        }, 0);
+      } else {
         setIsLoading(false);
-        return;
+        isRefreshing.current = false;
       }
-      
-      try {
-        console.log(`[POAPCollection] Starting POAP fetch for address: ${address}`);
-        setIsLoading(true);
-        
-        // Get data directly from the blockchain
-        const countryCodes = await getCountriesVisitedByUser(address);
-        console.log('[POAPCollection] Country codes from blockchain:', countryCodes);
-        
-        if (countryCodes && countryCodes.length > 0) {
-          // Convert country codes to POAP objects
-          const blockchainPoaps = countryCodes.map(countryCode => {
-            const lowerCode = countryCode.toLowerCase();
-            return {
-              id: `${lowerCode}-blockchain-${Date.now()}`,
-              country: countryNames[lowerCode] || countryCode,
-              countryCode: lowerCode,
-              timestamp: new Date().toISOString(),
-              coordinates: [0, 0] as [number, number], // Default coordinates
-              transactionHash: 'blockchain-verified',
-              verificationProof: 'blockchain-verified'
-            };
-          });
-          
-          console.log('[POAPCollection] Created POAP objects from blockchain data:', blockchainPoaps);
-          setDisplayedPoaps(blockchainPoaps);
-          
-          // Also store in localStorage as a cache
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('poaps', JSON.stringify(blockchainPoaps));
-            console.log('[POAPCollection] Cached blockchain POAPs in localStorage');
-          }
-        } else {
-          // First check localStorage before showing empty state
-          refreshFromLocalStorage();
-          
-          if (displayedPoaps.length === 0) {
-            console.log('[POAPCollection] No POAPs found on blockchain or localStorage, showing empty state');
-          }
-        }
-      } catch (error) {
-        console.error('[POAPCollection] Error fetching POAPs from blockchain:', error);
-        
-        // Try to load from localStorage as fallback
-        refreshFromLocalStorage();
-      } finally {
-        setIsLoading(false);
-      }
+    } catch (err) {
+      console.error('[POAPCollection] Error refreshing from localStorage:', err);
+      setIsLoading(false);
+      isRefreshing.current = false;
+    }
+  }, []);
+
+  // Fetch poaps from blockchain for the connected wallet
+  const fetchPoapsFromBlockchain = useCallback(async (address: string) => {
+    if (!address) return;
+    
+    // Only log the first fetch attempt during component lifecycle
+    if (process.env.NODE_ENV === 'development' && !hasFetched.current) {
+      // console.log('[POAPCollection] Starting POAP fetch for address:', address);
+      hasFetched.current = true;
     }
     
-    fetchPoaps();
-    
-    // Remove the polling interval - we'll rely on events instead
-    return () => {};
-  }, [isConnected, address, displayedPoaps.length, refreshFromLocalStorage]);
-  
-  // Add a listener for localStorage changes to update POAPs when minted
-  useEffect(() => {
-    // Function to handle storage changes
-    const handleStorageChange = (event: StorageEvent) => {
-      // Only react to poaps changes
-      if (event.key === 'poaps' || event.key === null) { // null is when localStorage is cleared
-        console.log('[POAPCollection] Storage change detected, refreshing data');
-        refreshFromLocalStorage();
+    try {
+      // Get list of countries the user has visited from the blockchain
+      const countryCodes = await getCountriesVisitedByUser(address);
+      
+      // Only log country codes in development mode
+      if (process.env.NODE_ENV === 'development' && countryCodes.length > 0) {
+        // console.log('[POAPCollection] Country codes from blockchain:', countryCodes);
       }
-    };
-    
-    // Function to handle custom event for internal updates
-    const handleInternalStorageChange = () => {
-      console.log('[POAPCollection] Internal storage change detected');
+      
+      if (countryCodes.length === 0) {
+        return; // No POAPs to display
+      }
+      
+      // Create POAP objects from the country codes
+      const poaps = countryCodes.map(countryCode => {
+        // Get the country name and coordinates for this country code
+        const countryInfo = getCountryInfo(countryCode);
+        
+        return {
+          id: `blockchain-${countryCode}`,
+          country: countryInfo?.name || 'Unknown',
+          countryCode: countryCode,
+          timestamp: new Date().toISOString(),
+          coordinates: countryInfo?.coordinates || [0, 0],
+          transactionHash: 'blockchain', // Marker for blockchain-sourced POAPs
+        };
+      });
+
+      // Only log in development mode
+      // if (process.env.NODE_ENV === 'development' && poaps.length > 0) {
+      //   console.log('[POAPCollection] Created POAP objects from blockchain data:', poaps);
+      // }
+      
+      // Cache these in localStorage
+      localStorage.setItem('poaps', JSON.stringify(poaps));
+      
+      // Only log in development mode
+      // if (process.env.NODE_ENV === 'development') {
+      //   console.log('[POAPCollection] Cached blockchain POAPs in localStorage');
+      // }
+      
+      // Refresh the display
+      refreshFromLocalStorage();
+      
+    } catch (err) {
+      console.error('[POAPCollection] Error fetching POAPs from blockchain:', err);
+    }
+  }, [refreshFromLocalStorage]);
+
+  // Use effect to fetch poaps when wallet is connected
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchPoapsFromBlockchain(address);
+    }
+  }, [isConnected, address, fetchPoapsFromBlockchain]);
+
+  // Listen for updates from localStorage
+  useEffect(() => {
+    // Define a handler for storage events
+    const handleStorageChange = () => {
       refreshFromLocalStorage();
     };
     
-    // Function to handle custom POAP minted event
-    const handlePoapMinted = () => {
-      console.log('[POAPCollection] POAP minted event detected');
-      // Give it a slight delay to ensure all state updates have settled
-      setTimeout(refreshFromLocalStorage, 100);
+    // Also refresh initially
+    refreshFromLocalStorage();
+    
+    // Add event listener for storage events
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('poap-minted', handleStorageChange);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('poap-minted', handleStorageChange);
+    };
+  }, [refreshFromLocalStorage]);
+
+  // Add a one-time cleanup function to run on component mount
+  useEffect(() => {
+    // Wrap in a function to run once
+    const cleanupDuplicates = () => {
+
+      
+      try {
+        const storedPoaps = localStorage.getItem('poaps');
+        if (!storedPoaps) return;
+        
+        const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+        
+        // Create a deduplicated array
+        const uniquePoaps: POAP[] = [];
+        const addedCountryCodes = new Set<string>();
+        let duplicatesFound = 0;
+        
+        for (const poap of parsedPoaps) {
+          const countryCode = poap.countryCode.toLowerCase();
+          // Deduplicate by countryCode
+          if (!addedCountryCodes.has(countryCode)) {
+            uniquePoaps.push(poap);
+            addedCountryCodes.add(countryCode);
+          } else {
+            duplicatesFound++;
+          }
+        }
+        
+        // Only update localStorage if duplicates were found
+        if (duplicatesFound > 0) {
+          // console.log(`[POAPCollection] Found and removed ${duplicatesFound} duplicate POAPs`);
+          localStorage.setItem('poaps', JSON.stringify(uniquePoaps));
+        } else {
+          // console.log('[POAPCollection] No duplicates found in localStorage');
+        }
+      } catch (err) {
+        console.error('[POAPCollection] Error cleaning up duplicates:', err);
+      }
     };
     
-    // Add event listeners
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('storage-updated', handleInternalStorageChange);
-      window.addEventListener('poap-minted', handlePoapMinted);
-      
-      // Force a refresh immediately but only if we haven't refreshed recently
-      if (Date.now() - lastRefreshTime > 1000) {
-        refreshFromLocalStorage();
-      }
-      
-      // Cleanup
-      return () => {
-        window.removeEventListener('storage', handleStorageChange);
-        window.removeEventListener('storage-updated', handleInternalStorageChange);
-        window.removeEventListener('poap-minted', handlePoapMinted);
-      };
-    }
-  }, [lastRefreshTime, refreshFromLocalStorage]);
+    cleanupDuplicates();
+  }, []);
+
+  // Add implementation for getCountryInfo function
+  const getCountryInfo = (countryCode: string) => {
+    const code = countryCode.toLowerCase();
+    // Map country codes to names and default coordinates
+    const countryMap: Record<string, { name: string, coordinates: [number, number] }> = {
+      us: { name: 'United States', coordinates: [37.0902, -95.7129] },
+      jp: { name: 'Japan', coordinates: [36.2048, 138.2529] },
+      fr: { name: 'France', coordinates: [46.2276, 2.2137] },
+      de: { name: 'Germany', coordinates: [51.1657, 10.4515] },
+      gb: { name: 'United Kingdom', coordinates: [55.3781, -3.4360] },
+      ca: { name: 'Canada', coordinates: [56.1304, -106.3468] },
+      // Add more countries as needed
+    };
+    
+    return countryMap[code] || { 
+      name: countryNames[code] || code.toUpperCase(), 
+      coordinates: [0, 0] 
+    };
+  };
 
   return (
     <div className="w-full relative">
+      <h2 className="text-2xl font-bold mb-4">POAP Collection</h2>
       {isLoading ? (
-        <div className="py-6 text-center">
-          <div className="w-10 h-10 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-gray-700">Loading your POAPs...</p>
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

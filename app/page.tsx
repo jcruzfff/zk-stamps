@@ -95,16 +95,12 @@ export default function Home() {
     // Only run this on the client side
     if (typeof window === 'undefined') return;
     
-    console.log('🏠 [Home] Loading POAPs from localStorage');
-    
     try {
       // Check for stored POAPs
       const storedPoaps = localStorage.getItem('poaps');
-      console.log('🏠 [Home] Raw localStorage POAP data:', storedPoaps);
       
       if (storedPoaps) {
         const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
-        console.log('🏠 [Home] Parsed POAPs from localStorage:', parsedPoaps);
         
         // Validate the data has required fields
         if (Array.isArray(parsedPoaps)) {
@@ -115,18 +111,10 @@ export default function Home() {
           );
           
           if (validPoaps.length > 0) {
-            console.log(`🏠 [Home] Found ${validPoaps.length} valid POAPs:`, validPoaps);
-            
             // Update state with stored POAPs
             setPoaps(validPoaps);
-          } else {
-            console.log('🏠 [Home] No valid POAPs found in localStorage');
           }
-        } else {
-          console.log('🏠 [Home] localStorage POAPs is not an array:', parsedPoaps);
         }
-      } else {
-        console.log('🏠 [Home] No POAPs found in localStorage');
       }
     } catch (error) {
       console.error('🔴 [Home] Error retrieving stored POAPs:', error);
@@ -150,8 +138,6 @@ export default function Home() {
         
         // Validate the data has required fields
         if (parsedData && parsedData.verificationProof) {
-          console.log('Found stored passport verification data');
-          
           // Update state with stored data
           setPassportData(parsedData);
           setIsPassportVerified(true);
@@ -191,8 +177,6 @@ export default function Home() {
 
   // Handle passport verification
   const handlePassportVerified = (data: PassportVerificationData) => {
-    console.log('Passport verification successful, data received:', data);
-    
     if (!data) {
       console.error('Verification data is null or undefined');
       return;
@@ -229,8 +213,6 @@ export default function Home() {
       
       // Go directly to Home step
       setCurrentStep(AppStep.Home);
-      console.log('Moving to Home step');
-      
     } catch (error) {
       console.error('Error handling passport verification:', error);
     }
@@ -238,12 +220,8 @@ export default function Home() {
 
   // Add new POAP to the collection
   const handlePoapMinted = (poap: POAP) => {
-    console.log('🌟 [Home] New POAP minted, updating collection:', poap);
-    
     // Update state with new POAP
     setPoaps(prevPoaps => {
-      console.log('🌟 [Home] Previous POAPs:', prevPoaps);
-      
       // Check if this POAP already exists to avoid duplicates
       const isDuplicate = prevPoaps.some(p => 
         p.countryCode.toLowerCase() === poap.countryCode.toLowerCase() && 
@@ -251,24 +229,20 @@ export default function Home() {
       );
       
       if (isDuplicate) {
-        console.log('🌟 [Home] Duplicate POAP detected, not adding again');
         return prevPoaps;
       }
       
       // Create a new array with the previous POAPs and the new one
       const updatedPoaps = [...prevPoaps, poap];
-      console.log('🌟 [Home] Updated POAPs array:', updatedPoaps);
       
       // Store the updated POAPs in localStorage for persistence
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
-          console.log('🌟 [Home] POAPs saved to localStorage. Raw data:', JSON.stringify(updatedPoaps));
           
           // Force trigger any components that might be listening for localStorage changes
           window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('poap-minted'));
-          console.log('🌟 [Home] Dispatched storage events to notify components');
         } catch (err) {
           console.error('🔴 [Home] Failed to save POAPs to localStorage:', err);
         }
