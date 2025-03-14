@@ -1,6 +1,8 @@
 Updated Implementation Plan with RainbowKit (Celo + Self Protocol)
 Since RainbowKit is supported on Celo, you can now leverage Coinbase Wallet and other wallets while keeping Self Protocol for ZK Proofs. Here’s the revised plan incorporating RainbowKit for wallet authentication.
 
+ONLY USE REAL TRANSACTION BLOCKCHAIN DATA. NEVER USE MOCKDATA
+
 📌 Core Features
 Wallet Connection via RainbowKit
 

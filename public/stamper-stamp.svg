@@ -1,0 +1,11 @@
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="30" cy="30" r="29" stroke="#4BB4F1" stroke-width="2" />
+    <circle cx="30" cy="30" r="26" stroke="#4BB4F1" stroke-width="1" stroke-dasharray="2 2" />
+    <path
+        d="M18 30C18 23.3726 23.3726 18 30 18C36.6274 18 42 23.3726 42 30C42 36.6274 36.6274 42 30 42C23.3726 42 18 36.6274 18 30Z"
+        fill="#4BB4F1" fill-opacity="0.1" />
+    <text x="30" y="26" font-family="Arial" font-size="6" text-anchor="middle" fill="#4BB4F1">Self Stamps</text>
+    <text x="30" y="34" font-family="Arial" font-size="8" font-weight="bold" text-anchor="middle"
+        fill="#4BB4F1">VERIFIED</text>
+    <text x="30" y="40" font-family="Arial" font-size="4" text-anchor="middle" fill="#4BB4F1">zkPROOF</text>
+</svg>

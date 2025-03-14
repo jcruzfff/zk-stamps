@@ -1,6 +1,6 @@
-# Stamper - Travel Verification & POAP Collection
+# zkStamps - Travel Verification & POAP Collection
 
-Stamper is a privacy-preserving, gamified POAP issuance system built using Self Protocol (for Zero-Knowledge Proofs) and Celo (for blockchain transactions). Users verify their identity and location via NFC passport scans + GPS to earn POAPs (Proof of Attendance Protocol tokens).
+zkStamp is a privacy-preserving, gamified POAP issuance system built using Self Protocol (for Zero-Knowledge Proofs) and Celo (for blockchain transactions). Users verify their identity and location via NFC passport scans + GPS to earn POAPs (Proof of Attendance Protocol tokens).
 
 ## 🚀 Features
 

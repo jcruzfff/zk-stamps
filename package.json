@@ -2,8 +2,10 @@
   "name": "stamper",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -11,6 +13,7 @@
   "dependencies": {
     "@celo/contractkit": "^9.0.1",
     "@celo/rainbowkit-celo": "^1.2.1",
+    "@openzeppelin/contracts": "4.9.3",
     "@rainbow-me/rainbowkit": "^2.2.4",
     "@selfxyz/core": "^0.0.6",
     "@selfxyz/qrcode": "^0.0.9",
@@ -18,12 +21,15 @@
     "@types/three": "^0.174.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "ethers": "^6.13.5",
     "lucide-react": "^0.479.0",
     "next": "15.2.2-canary.6",
+    "node-fetch": "2",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-globe.gl": "^2.33.1",
+    "react-intersection-observer": "^9.16.0",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.174.0",
@@ -33,12 +39,15 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "15.2.2-canary.6",
+    "hardhat": "^2.22.19",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

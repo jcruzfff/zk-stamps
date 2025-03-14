@@ -36,7 +36,7 @@ type ProofSettings = {
 
 type QRProofSheetProps = {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   passportData: PassportData | null;
   proofSettings: ProofSettings;
 };
@@ -60,7 +60,7 @@ type FilteredPassportData = {
 
 export default function QRProofSheet({ 
   isOpen, 
-  onClose, 
+  onCloseAction, 
   passportData, 
   proofSettings 
 }: QRProofSheetProps) {
@@ -104,7 +104,7 @@ export default function QRProofSheet({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sheetRef.current && !sheetRef.current.contains(event.target as Node)) {
-        onClose();
+        onCloseAction();
       }
     };
 
@@ -115,7 +115,7 @@ export default function QRProofSheet({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onCloseAction]);
 
   if (!isOpen) return null;
 
@@ -154,7 +154,7 @@ export default function QRProofSheet({
         
         <div className="mt-6 flex space-x-3">
           <button
-            onClick={onClose}
+            onClick={onCloseAction}
             className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
           >
             Close

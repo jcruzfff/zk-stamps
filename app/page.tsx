@@ -90,6 +90,51 @@ export default function Home() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
+  // Load POAPs from localStorage on component mount
+  useEffect(() => {
+    // Only run this on the client side
+    if (typeof window === 'undefined') return;
+    
+    console.log('🏠 [Home] Loading POAPs from localStorage');
+    
+    try {
+      // Check for stored POAPs
+      const storedPoaps = localStorage.getItem('poaps');
+      console.log('🏠 [Home] Raw localStorage POAP data:', storedPoaps);
+      
+      if (storedPoaps) {
+        const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+        console.log('🏠 [Home] Parsed POAPs from localStorage:', parsedPoaps);
+        
+        // Validate the data has required fields
+        if (Array.isArray(parsedPoaps)) {
+          // Filter out any potentially corrupted data
+          const validPoaps = parsedPoaps.filter(poap => 
+            poap && poap.id && poap.countryCode && poap.coordinates && 
+            Array.isArray(poap.coordinates) && poap.coordinates.length === 2
+          );
+          
+          if (validPoaps.length > 0) {
+            console.log(`🏠 [Home] Found ${validPoaps.length} valid POAPs:`, validPoaps);
+            
+            // Update state with stored POAPs
+            setPoaps(validPoaps);
+          } else {
+            console.log('🏠 [Home] No valid POAPs found in localStorage');
+          }
+        } else {
+          console.log('🏠 [Home] localStorage POAPs is not an array:', parsedPoaps);
+        }
+      } else {
+        console.log('🏠 [Home] No POAPs found in localStorage');
+      }
+    } catch (error) {
+      console.error('🔴 [Home] Error retrieving stored POAPs:', error);
+      // If there's an error, clear the stored data to prevent future issues
+      localStorage.removeItem('poaps');
+    }
+  }, []);
+
   // Check for saved verification data on component mount
   useEffect(() => {
     // Only run this on the client side
@@ -193,7 +238,44 @@ export default function Home() {
 
   // Add new POAP to the collection
   const handlePoapMinted = (poap: POAP) => {
-    setPoaps(prev => [...prev, poap]);
+    console.log('🌟 [Home] New POAP minted, updating collection:', poap);
+    
+    // Update state with new POAP
+    setPoaps(prevPoaps => {
+      console.log('🌟 [Home] Previous POAPs:', prevPoaps);
+      
+      // Check if this POAP already exists to avoid duplicates
+      const isDuplicate = prevPoaps.some(p => 
+        p.countryCode.toLowerCase() === poap.countryCode.toLowerCase() && 
+        p.transactionHash === poap.transactionHash
+      );
+      
+      if (isDuplicate) {
+        console.log('🌟 [Home] Duplicate POAP detected, not adding again');
+        return prevPoaps;
+      }
+      
+      // Create a new array with the previous POAPs and the new one
+      const updatedPoaps = [...prevPoaps, poap];
+      console.log('🌟 [Home] Updated POAPs array:', updatedPoaps);
+      
+      // Store the updated POAPs in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
+          console.log('🌟 [Home] POAPs saved to localStorage. Raw data:', JSON.stringify(updatedPoaps));
+          
+          // Force trigger any components that might be listening for localStorage changes
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('poap-minted'));
+          console.log('🌟 [Home] Dispatched storage events to notify components');
+        } catch (err) {
+          console.error('🔴 [Home] Failed to save POAPs to localStorage:', err);
+        }
+      }
+      
+      return updatedPoaps;
+    });
   };
 
   // Open QR sheet for displaying proof
@@ -256,7 +338,7 @@ export default function Home() {
       <div className="relative">
         <button 
           onClick={toggleAvatarMenu}
-          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/30 transition-all"
           aria-label="User menu"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
@@ -375,7 +457,7 @@ export default function Home() {
               <div className="flex items-center gap-4">
                 <button 
                   onClick={handleOpenQRSheet}
-                  className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/30 transition-all"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
@@ -394,38 +476,40 @@ export default function Home() {
             <div 
               ref={sheetRef}
               className={`bottom-sheet ${isBottomSheetExpanded ? 'expanded' : ''}`}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
             >
               <div 
                 className="sheet-header" 
                 onClick={toggleBottomSheet}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
                 <div className="sheet-handle"></div>
-                <div className="text-center text-xs text-gray-400 mt-1 mb-2">
+                <div className="text-center text-xs text-gray-400 mt-1 mb-1">
                   {isBottomSheetExpanded ? 'Swipe down to minimize' : 'Swipe up for more'}
                 </div>
               </div>
-              <div className="sheet-content">
+              <div className="sheet-content ">
                 {/* Upcoming Trips - Using the UpcomingTrips component */}
                 <h2 className="section-title">Upcoming Trip</h2>
                 <UpcomingTrips />
                 
                 {/* Trip Suggestions - Using the TripSuggestions component */}
-                <h2 className="section-title">Trip Suggestions</h2>
+                <h2 className="text-base pt-4 pb-4">Trip Suggestions</h2>
                 <TripSuggestions />
                 
                 {/* POAPs Collected - Using the POAPCollection component */}
                 <h2 className="section-title">POAPs Collected</h2>
-                <POAPCollection poaps={poaps} />
+                <POAPCollection />
                 
                 {/* Travel Verification - Using the TravelVerification component */}
                 <h2 className="section-title">Travel Verification</h2>
-                <TravelVerification 
-                  isPassportVerified={isPassportVerified} 
-                  onPoapMinted={handlePoapMinted}
-                />
+                <div id="travel-verification">
+                  <TravelVerification 
+                    isPassportVerified={isPassportVerified} 
+                    onPoapMinted={handlePoapMinted}
+                  />
+                </div>
                 
                 {/* Stats - Using the TravelStats component */}
                 <h2 className="section-title">Places you&apos;ve seen</h2>
@@ -452,7 +536,7 @@ export default function Home() {
     return (
       <QRProofSheet
         isOpen={isQRSheetOpen}
-        onClose={() => setIsQRSheetOpen(false)}
+        onCloseAction={() => setIsQRSheetOpen(false)}
         passportData={passportData}
         proofSettings={proofSettings}
       />

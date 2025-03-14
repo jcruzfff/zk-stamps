@@ -126,7 +126,7 @@
   }
 }
 
-/* Custom Styles for Stamper App */
+/* Custom Styles for zkStamps App */
 .globe-container {
   position: absolute;
   width: 100vw;
@@ -141,6 +141,7 @@
   right: 0;
   bottom: 0;
   background-color: #000;
+  touch-action: none;
 }
 
 .globe-wrapper {
@@ -243,7 +244,7 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .globe-container {
-    height: 650px;
+    height: 80%;
   }
 
   .travel-stats-grid {
@@ -360,11 +361,12 @@
   border-radius: 30px 30px 0 0;
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateY(calc(40% - 5px));
+  transform: translateY(calc(70% - 5px));
   z-index: 40;
   overflow-y: auto;
   overflow-x: hidden;
   will-change: transform;
+  touch-action: pan-y;
 }
 
 .bottom-sheet.expanded {
@@ -376,7 +378,7 @@
   height: 5px;
   background-color: #e2e2e2;
   border-radius: 3px;
-  margin: 10px auto;
+  margin: 6px auto;
   cursor: pointer;
 }
 
@@ -385,10 +387,10 @@
 }
 
 .sheet-header {
-  padding: 16px 0 8px;
+  padding: 6px;
   cursor: pointer;
   user-select: none;
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: #ffffff;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -595,4 +597,253 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Horizontal scrolling list with hidden scrollbar */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  /* Internet Explorer and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, Opera */
+}
+
+/* Trip suggestions carousel styling */
+.trip-suggestion-card {
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: white;
+  height: fit-content;
+}
+
+.trip-suggestion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Snap scrolling */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* Avatar styling */
+.avatar-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+/* POAP Memory page styling */
+.memory-header {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.country-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background-color: rgba(75, 180, 241, 0.1);
+  color: #4BB4F1;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
+}
+
+.memory-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Add specific styles for POAP card with 356:502 aspect ratio */
+  max-width: 356px;
+  margin: 0 auto;
+  background-color: #f8f8f8;
+}
+
+.memory-card img {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+}
+
+.memory-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+
+
+.memory-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.memory-section-title svg {
+  margin-right: 0.75rem;
+  color: #4BB4F1;
+}
+
+.memory-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.memory-media-item {
+  position: relative;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  aspect-ratio: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.memory-media-item img,
+.memory-media-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-media-item-remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.25rem;
+  line-height: 0;
+  cursor: pointer;
+}
+
+/* Upload zone styling */
+.upload-zone {
+  border: 2px dashed rgba(75, 180, 241, 0.3);
+  border-radius: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-zone:hover {
+  border-color: #4BB4F1;
+  background-color: rgba(75, 180, 241, 0.05);
+}
+
+.upload-zone-icon {
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+  color: #4BB4F1;
+}
+
+.memory-text-area {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+ 
+  font-family: var(--font-sans);
+  resize: vertical;
+}
+
+.memory-action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.memory-action-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 48px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.memory-action-button.primary {
+  background-color: #4BB4F1;
+  color: white;
+}
+
+.memory-action-button.primary:hover {
+  background-color: #3a9fd9;
+}
+
+.memory-action-button.secondary {
+  background-color: white;
+  color: #333;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.memory-action-button.secondary:hover {
+  background-color: #f5f5f5;
+}
+
+.memory-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.memory-page-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  background-color: rgba(75, 180, 241, 0.05);
+  border-radius: 0 0 2rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.memory-page-hero .flag {
+  font-size: 6rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.memory-page-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.memory-page-hero .transaction {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: #666;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  margin-top: 1rem;
 }

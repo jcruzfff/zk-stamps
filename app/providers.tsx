@@ -27,7 +27,7 @@ const createConfig = () => {
   }
   
   return getDefaultConfig({
-    appName: 'Stamper',
+    appName: 'zkStamps',
     projectId: WALLET_CONNECT_PROJECT_ID,
     chains: [celoAlfajores, celo], // Use Alfajores testnet first for development
     transports: {

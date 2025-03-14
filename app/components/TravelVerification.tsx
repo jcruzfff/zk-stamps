@@ -1,7 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import Image from 'next/image';
+
+// Import debug file
+import '../debug';
+
+// Import the actual contract address from lib/blockchain
+import { POAP_CONTRACT_ADDRESS } from '../lib/blockchain';
 
 type Location = {
   country: string;
@@ -20,6 +27,63 @@ type POAP = {
   verificationProof: string;
 };
 
+// Contract ABI for the ZKStampsPOAP mint function
+const POAP_ABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "countryCode",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "countryName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "coordinates",
+        "type": "string"
+      }
+    ],
+    "name": "mintPOAP",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "countryCode",
+        "type": "string"
+      }
+    ],
+    "name": "hasVisitedCountry",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
 export default function TravelVerification({ 
   isPassportVerified,
   onPoapMinted
@@ -27,6 +91,9 @@ export default function TravelVerification({
   isPassportVerified: boolean;
   onPoapMinted?: (poap: POAP) => void;
 }) {
+  // Use a ref to track if we've already initialized to avoid duplicate logs
+  const hasInitialized = useRef(false);
+  
   const { isConnected, address } = useAccount();
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'scanning' | 'verifying' | 'success' | 'error'>('idle');
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
@@ -34,6 +101,141 @@ export default function TravelVerification({
   const [poaps, setPoaps] = useState<POAP[]>([]);
   const [selectedPoap, setSelectedPoap] = useState<POAP | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isNewCountry, setIsNewCountry] = useState<boolean>(false);
+  const [buttonStyle, setButtonStyle] = useState<string>('');
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [isButtonVisible, setIsButtonVisible] = useState(false);
+
+  // Set up contract write for minting the POAP directly from the user's wallet
+  const { writeContract, data: transactionHash, isPending: isWritePending, error: writeError } = useWriteContract();
+
+  // Track transaction status once transaction is submitted
+  const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({
+    hash: transactionHash,
+  });
+  
+  // Only log initialization once
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      console.log("TravelVerification component initialized");
+      console.log("Wallet connection:", { isConnected, address });
+      hasInitialized.current = true;
+    }
+  }, [isConnected, address]);
+  
+  // Debug log for button state - only log when relevant values change
+  useEffect(() => {
+    if (hasInitialized.current) {
+      // Only log if there's a significant state change
+      const buttonState = {
+        isPassportVerified,
+        isConnected,
+        hasCurrentLocation: !!currentLocation,
+        isWritePending,
+        isConfirming,
+        verificationStatus,
+        buttonDisabled: !isPassportVerified || !isConnected || !currentLocation || isWritePending || isConfirming
+      };
+      
+      console.log("Button state changed:", buttonState);
+    }
+  }, [isPassportVerified, isConnected, currentLocation, isWritePending, isConfirming, verificationStatus]);
+
+  // Add new POAP to the collection
+  useEffect(() => {
+    // Only run this effect if we have a transaction in progress or completed
+    const isTransactionInProgress = isWritePending || isConfirming;
+    const isTransactionCompleted = isConfirmed && transactionHash;
+    const isTransactionFailed = !!writeError || !!txError;
+    
+    if (!isTransactionInProgress && !isTransactionCompleted && !isTransactionFailed) {
+      return; // Early return if no transaction is happening
+    }
+    
+    if (isTransactionInProgress) {
+      console.log('🔶 [TravelVerification] Transaction in progress...', { isWritePending, isConfirming });
+      setVerificationStatus('verifying');
+      return; // Exit early to avoid unnecessary code execution
+    }
+    
+    if (isTransactionCompleted) {
+      console.log('🔶 [TravelVerification] Transaction completed successfully:', { 
+        transactionHash,
+        currentLocation
+      });
+      
+      // Run this code only once when transaction is confirmed
+      // Create new POAP data based on successful transaction
+      const newPoap: POAP = {
+        id: `${currentLocation?.countryCode || 'unknown'}-${Date.now()}`,
+        country: currentLocation?.country || 'Unknown',
+        countryCode: currentLocation?.countryCode || 'XX',
+        timestamp: new Date().toISOString(),
+        coordinates: currentLocation?.coordinates || [0, 0],
+        transactionHash: transactionHash,
+        verificationProof: `proof-${Date.now()}`
+      };
+      
+      console.log('🔶 [TravelVerification] Created new POAP object:', newPoap);
+      
+      // Use a function to update state to avoid closure issues
+      setPoaps(prevPoaps => {
+        console.log('🔶 [TravelVerification] Previous POAPs:', prevPoaps);
+        const updatedPoaps = [...prevPoaps, newPoap];
+        console.log('🔶 [TravelVerification] Updated POAPs array:', updatedPoaps);
+        
+        // Store in localStorage for persistence
+        if (typeof window !== 'undefined') {
+          console.log('🔶 [TravelVerification] Storing POAPs in localStorage');
+          try {
+            localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
+            console.log('🔶 [TravelVerification] Successfully stored in localStorage');
+            
+            // Dispatch custom events to notify other components
+            window.dispatchEvent(new Event('storage-updated'));
+            window.dispatchEvent(new Event('poap-minted'));
+          } catch (storageError) {
+            console.error('🔴 [TravelVerification] Error storing in localStorage:', storageError);
+          }
+        }
+        
+        return updatedPoaps;
+      });
+      
+      setSelectedPoap(newPoap);
+      setVerificationStatus('success');
+      setIsNewCountry(false); // Reset the new country status
+      
+      // Notify parent component about the new POAP
+      if (onPoapMinted) {
+        console.log('🔶 [TravelVerification] Notifying parent component of new POAP');
+        onPoapMinted(newPoap);
+      }
+      
+      // Automatically hide the success banner after 5 seconds
+      setTimeout(() => {
+        setSelectedPoap(null);
+      }, 5000);
+      
+      return; // Exit early
+    }
+    
+    if (isTransactionFailed) {
+      console.error('🔴 [TravelVerification] Transaction failed:', { writeError, txError });
+      const errorMsg = (writeError || txError)?.message || 'Failed to mint POAP';
+      setErrorMessage(errorMsg);
+      setVerificationStatus('error');
+    }
+  }, [
+    isWritePending, 
+    isConfirming, 
+    isConfirmed, 
+    transactionHash, 
+    writeError, 
+    txError, 
+    currentLocation, 
+    onPoapMinted
+  ]);
 
   // Get real GPS location
   useEffect(() => {
@@ -64,13 +266,28 @@ export default function TravelVerification({
             const country = data.address?.country || 'Unknown';
             const countryCode = data.address?.country_code?.toUpperCase() || 'XX';
             
-            setCurrentLocation({
+            // Create the location object
+            const newLocation = {
               country,
               countryCode,
               timestamp: new Date().toISOString(),
-              coordinates: [lat, lng]
-            });
+              coordinates: [lat, lng] as [number, number]
+            };
             
+            // Check if this is a new country the user hasn't visited before
+            // Load existing POAPs from localStorage
+            let isNew = true;
+            if (typeof window !== 'undefined') {
+              const storedPoaps = localStorage.getItem('poaps');
+              if (storedPoaps) {
+                const existingPoaps = JSON.parse(storedPoaps) as POAP[];
+                isNew = !existingPoaps.some(p => p.countryCode === countryCode);
+              }
+            }
+            
+            // Set the location and newness status
+            setCurrentLocation(newLocation);
+            setIsNewCountry(isNew);
             setGpsStatus('success');
           } catch (error) {
             console.error('Error fetching location data:', error);
@@ -88,54 +305,167 @@ export default function TravelVerification({
         },
         (error) => {
           console.error('Geolocation error:', error);
+          setErrorMessage('Unable to access your location. Please enable location services and try again.');
           setGpsStatus('error');
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              setErrorMessage('Location access was denied. Please enable location services for this site.');
-              break;
-            case error.POSITION_UNAVAILABLE:
-              setErrorMessage('Location information is unavailable.');
-              break;
-            case error.TIMEOUT:
-              setErrorMessage('The request to get location timed out.');
-              break;
-            default:
-              setErrorMessage('An unknown error occurred while retrieving location.');
-          }
-          
-          // Fallback to demo data if geolocation fails
-          const demoLocations = [
-            { country: 'France', countryCode: 'FR', coordinates: [48.8566, 2.3522] },
-            { country: 'Germany', countryCode: 'DE', coordinates: [52.5200, 13.4050] },
-            { country: 'Italy', countryCode: 'IT', coordinates: [41.9028, 12.4964] }
-          ];
-          
-          const randomLocation = demoLocations[Math.floor(Math.random() * demoLocations.length)];
-          
-          setCurrentLocation({
-            ...randomLocation,
-            timestamp: new Date().toISOString(),
-            coordinates: randomLocation.coordinates as [number, number]
-          });
         }
       );
     } else {
+      setErrorMessage('Geolocation is not supported by your browser');
       setGpsStatus('error');
-      setErrorMessage('Geolocation is not supported by this browser.');
-      
-      // Fallback to demo data if geolocation is not supported
-      const fallbackLocation = {
-        country: 'Unknown',
-        countryCode: 'XX',
-        coordinates: [0, 0],
-        timestamp: new Date().toISOString()
-      };
-      
-      setCurrentLocation(fallbackLocation as Location);
     }
   }, []);
 
+  // Load existing POAPs and determine if this is a new country
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedPoaps = localStorage.getItem('poaps');
+      if (storedPoaps) {
+        try {
+          const parsedPoaps = JSON.parse(storedPoaps) as POAP[];
+          setPoaps(parsedPoaps);
+          
+          // Check if we have a current location to determine if it's a new country
+          if (currentLocation) {
+            const isNew = !parsedPoaps.some(p => p.countryCode === currentLocation.countryCode);
+            
+            // Set the new country flag
+            setIsNewCountry(isNew);
+          }
+        } catch (error) {
+          console.error('Error parsing stored POAPs:', error);
+        }
+      } else if (currentLocation) {
+        // If no stored POAPs, this must be a new country
+        setIsNewCountry(true);
+      }
+    }
+  }, [currentLocation]);
+
+  // Setup Intersection Observer to detect when button is in viewport
+  useEffect(() => {
+    if (!buttonRef.current || !isNewCountry) return;
+    
+    // Store the ref value in a variable to use in cleanup
+    const buttonElement = buttonRef.current;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !isButtonVisible) {
+            // Button has entered viewport, set flag
+            setIsButtonVisible(true);
+          }
+        });
+      },
+      { threshold: 0.5 } // Trigger when at least 50% of the button is visible
+    );
+    
+    // Start observing the button
+    observer.observe(buttonElement);
+    
+    // Cleanup
+    return () => {
+      if (buttonElement) {
+        observer.unobserve(buttonElement);
+      }
+    };
+  }, [buttonRef, isNewCountry, isButtonVisible]);
+
+  // Trigger animation when button becomes visible
+  useEffect(() => {
+    if (isNewCountry && isButtonVisible) {
+      // Set initial default style
+      setButtonStyle('bg-[#03AEEC] text-white');
+      
+      // Start animation sequence when the button is visible
+      setTimeout(() => {
+        setButtonStyle('bg-[#03AEEC] text-white scale-105 shadow-md transition-all duration-400');
+        
+        // Then scale back with a slight bounce effect
+        setTimeout(() => {
+          setButtonStyle('bg-[#03AEEC] text-white scale-100 transition-all duration-400');
+          
+          // Final pulse effect with subtle glow
+          setTimeout(() => {
+            setButtonStyle('bg-[#03AEEC] text-white scale-103 shadow-sm transition-all duration-400');
+            
+            // End with normal state but keep a subtle hover effect
+            setTimeout(() => {
+              setButtonStyle('bg-[#03AEEC] text-white scale-102 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-md hover:bg-[#03AEEC]/90');
+            }, 500);
+          }, 500);
+        }, 500);
+      }, 300);
+    }
+  }, [isNewCountry, isButtonVisible]);
+
+  // Function to check if user has already minted a POAP for the current country
+  const hasAlreadyMintedForCountry = async (countryCode: string | undefined): Promise<boolean> => {
+    console.log('🔍 [hasAlreadyMintedForCountry] Checking if POAP exists for', countryCode);
+    if (!countryCode || typeof window === 'undefined') return false;
+    
+    try {
+      // Get POAPs from localStorage
+      const storedPoaps = localStorage.getItem('poaps');
+      if (!storedPoaps) {
+        console.log('🔍 [hasAlreadyMintedForCountry] No POAPs found in localStorage');
+        return false;
+      }
+      
+      // Parse the stored POAPs
+      const poaps = JSON.parse(storedPoaps);
+      if (!Array.isArray(poaps) || poaps.length === 0) {
+        console.log('🔍 [hasAlreadyMintedForCountry] No valid POAPs array in localStorage');
+        return false;
+      }
+      
+      // Check if any POAP matches the current country code (case insensitive)
+      const found = poaps.some(poap => 
+        poap.countryCode && poap.countryCode.toLowerCase() === countryCode.toLowerCase()
+      );
+      
+      if (found) {
+        console.log(`🔍 [hasAlreadyMintedForCountry] Found existing POAP for ${countryCode}`);
+      }
+      
+      return found;
+    } catch (error) {
+      console.error('🔴 [hasAlreadyMintedForCountry] Error checking for existing POAP:', error);
+      return false;
+    }
+  };
+
+  // Check blockchain for already minted POAPs
+  useEffect(() => {
+    // Only run if we have a wallet address
+    if (!isConnected || !address) return;
+    
+    const checkBlockchainPoaps = async () => {
+      try {
+        console.log('🔍 [TravelVerification] Checking blockchain for POAPs minted by', address);
+        
+        // If we have a current location, check if this user has already minted a POAP for this country
+        if (currentLocation) {
+          // Use the same function we use during minting to check for existing POAPs
+          const hasVisited = await hasAlreadyMintedForCountry(currentLocation.countryCode);
+          console.log(`🔍 [TravelVerification] Has visited ${currentLocation.country}:`, hasVisited);
+          
+          // Update the new country flag based on the check
+          setIsNewCountry(!hasVisited);
+        }
+      } catch (error) {
+        console.error('🔴 [TravelVerification] Error checking blockchain POAPs:', error);
+      }
+    };
+    
+    // Only run once when component mounts or when location changes
+    if (currentLocation) {
+      checkBlockchainPoaps();
+    }
+  }, [isConnected, address, currentLocation]);
+
+  // Legacy server-side verification method kept as fallback
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const startVerification = async () => {
     if (!isPassportVerified || !isConnected || !currentLocation) {
       return;
@@ -162,18 +492,42 @@ export default function TravelVerification({
           }),
         });
         
-        if (!response.ok) {
-          throw new Error('Travel verification failed');
+        // Parse the response as text first to handle non-JSON errors
+        const rawText = await response.text();
+        let data;
+        
+        try {
+          data = JSON.parse(rawText);
+        } catch (error) {
+          console.error('Failed to parse response:', error, rawText);
+          throw new Error(`Server returned invalid JSON: ${rawText.substring(0, 100)}...`);
         }
         
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || `Server returned ${response.status}: ${response.statusText}`);
+        }
         
         if (data.success && data.poapData) {
+          // Store the POAP data
           const newPoap: POAP = data.poapData;
           
-          setPoaps(prev => [...prev, newPoap]);
+          // Check if this is a simulated transaction in development
+          if (data.development) {
+            console.log('Using simulated transaction in development mode');
+          } else {
+            console.log('Real blockchain transaction confirmed:', data.poapData.transactionHash);
+          }
+          
+          // Store in localStorage for persistence
+          const updatedPoaps = [...poaps, newPoap];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
+          }
+          
+          setPoaps(updatedPoaps);
           setSelectedPoap(newPoap);
           setVerificationStatus('success');
+          setIsNewCountry(false); // Reset the new country status
           
           // Notify parent component about the new POAP
           if (onPoapMinted) {
@@ -190,164 +544,162 @@ export default function TravelVerification({
     }, 3000);
   };
 
+  /**
+   * Request a POAP mint - this will now be done directly from the user's wallet
+   */
+  const requestPOAPMint = async () => {
+    console.log("Button clicked - requestPOAPMint function called");
+    
+    // Only proceed if all conditions are met
+    if (verificationStatus !== 'idle' || !isConnected || !currentLocation || !address || !isPassportVerified) {
+      console.log("Conditions not met - returning early");
+      return;
+    }
+
+    // Check if the user already has a POAP for this country
+    const alreadyMinted = await hasAlreadyMintedForCountry(currentLocation.countryCode);
+    if (alreadyMinted) {
+      console.log(`Already minted a POAP for ${currentLocation.country}`);
+      
+      // Show an error message instead of allowing duplicate minting
+      setErrorMessage(`You've already minted a POAP for ${currentLocation.country}`);
+      return;
+    }
+
+    try {
+      console.log("All conditions met - proceeding with mint");
+      // Format coordinates for the contract (convert to string with 6 decimal precision)
+      const formattedCoordinates = currentLocation.coordinates.map(coord => 
+        coord.toFixed(6)
+      ).join(',');
+      
+      console.log("Formatted coordinates:", formattedCoordinates);
+      console.log("Initiating blockchain transaction to mint POAP");
+
+      // Verify contract address
+      if (!POAP_CONTRACT_ADDRESS || POAP_CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
+        throw new Error('Invalid contract address. Please configure POAP_CONTRACT_ADDRESS in your environment variables.');
+      }
+
+      // Set the verification status to verifying
+      setVerificationStatus('verifying');
+      
+      // Call the smart contract directly from the user's wallet
+      // This will prompt the wallet for transaction confirmation
+      writeContract({
+        abi: POAP_ABI,
+        address: POAP_CONTRACT_ADDRESS as `0x${string}`,
+        functionName: 'mintPOAP',
+        args: [
+          currentLocation.countryCode,
+          currentLocation.country,
+          formattedCoordinates
+        ]
+      });
+      
+      // The useEffect hook watching for transaction states will handle success/failure
+    } catch (err) {
+      console.error('Minting error:', err);
+      
+      // Show a detailed error message
+      const errorMessage = err instanceof Error ? err.message : 'Failed to mint POAP';
+      setErrorMessage(`Transaction failed: ${errorMessage}`);
+      setVerificationStatus('error');
+    }
+  };
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto mt-8">
-      <h2 className="text-2xl font-bold mb-4 text-center">Travel Verification</h2>
-      
-      {gpsStatus === 'requesting' && (
-        <div className="text-center py-4">
-          <div className="w-12 h-12 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-gray-700">Detecting your location...</p>
-        </div>
-      )}
-      
-      {gpsStatus === 'error' && errorMessage && (
-        <div className="p-4 bg-red-50 rounded-lg mb-4">
-          <p className="text-red-600 text-sm">{errorMessage}</p>
-          <p className="text-xs text-gray-500 mt-1">Using fallback location data.</p>
-        </div>
-      )}
-      
-      {verificationStatus === 'idle' && (
-        <div className="space-y-4">
-          {currentLocation && (
-            <div className="p-4 bg-gray-100 rounded-lg">
-              <p className="text-sm font-medium mb-2">Current Location:</p>
-              <p className="text-lg font-bold">{currentLocation.country}</p>
-              <p className="text-sm text-gray-600">Coordinates: {currentLocation.coordinates[0].toFixed(4)}, {currentLocation.coordinates[1].toFixed(4)}</p>
+    <div className="travel-verification shadow-sm rounded-lg overflow-hidden">
+      <div className="p-6 pb-4">
+        <div className="flex items-start">
+          <div className="flex-1">
+            {/* Simplified welcome message */}
+            <h3 className="text-xl font-semibold mb-4">
+              {currentLocation ? `Welcome to ${currentLocation.country}!` : 'Detecting location...'}
+            </h3>
+            
+            {isNewCountry && (
+              <div className="p-3 bg-blue-50 rounded-lg mb-4">
+                <p className="font-medium text-blue-800">✨ New Country Detected!</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  This is your current location. Mint a POAP to add it to your collection!
+                </p>
+              </div>
+            )}
+            
+            {/* Location information */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-700 mb-1">Current Location:</h4>
+              <h3 className="text-lg font-medium mb-2">
+                {currentLocation?.country || 'Detecting...'}
+              </h3>
+              
+              {currentLocation && (
+                <p className="text-sm text-gray-500 mb-2">
+                  Coordinates: {currentLocation.coordinates[0].toFixed(4)}, {currentLocation.coordinates[1].toFixed(4)}
+                </p>
+              )}
+              
               {gpsStatus === 'success' && (
-                <p className="text-xs text-green-600 mt-1">✓ GPS location confirmed</p>
+                <p className="text-sm text-green-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  GPS location confirmed
+                </p>
               )}
             </div>
-          )}
-          
-          <button
-            onClick={startVerification}
-            disabled={!isPassportVerified || !isConnected || !currentLocation}
-            className={`w-full py-2 px-4 font-semibold rounded-md transition duration-300 ${
-              isPassportVerified && isConnected && currentLocation
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Verify Travel & Mint POAP
-          </button>
-          
-          {!isPassportVerified && (
-            <p className="text-xs text-center text-red-500 mt-2">
-              Please verify your passport first
-            </p>
-          )}
-          
-          {!isConnected && (
-            <p className="text-xs text-center text-red-500 mt-2">
-              Please connect your wallet first
-            </p>
-          )}
-          
-          {!currentLocation && (
-            <p className="text-xs text-center text-red-500 mt-2">
-              Waiting for location data...
-            </p>
-          )}
-        </div>
-      )}
-      
-      {verificationStatus === 'scanning' && (
-        <div className="text-center py-8">
-          <div className="w-48 h-48 mx-auto border-4 border-dashed border-blue-500 rounded-lg flex items-center justify-center mb-4 animate-pulse">
-            <div className="text-blue-500">Scanning Passport...</div>
-          </div>
-          <p className="text-sm text-gray-600">Please hold your phone near your passport&apos;s NFC chip</p>
-        </div>
-      )}
-      
-      {verificationStatus === 'verifying' && (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-700">Generating travel proof & minting POAP...</p>
-          <p className="text-xs text-gray-500 mt-2">This may take a moment</p>
-        </div>
-      )}
-      
-      {verificationStatus === 'success' && (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
-            <span className="text-green-600 text-2xl">✓</span>
-          </div>
-          <h3 className="text-xl font-semibold text-green-600 mb-2">POAP Minted Successfully!</h3>
-          <p className="text-gray-600 text-sm">
-            You&apos;ve earned a POAP for visiting {selectedPoap?.country}
-          </p>
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-gray-700">
-              <strong>Transaction:</strong> {selectedPoap?.transactionHash.substring(0, 6)}...{selectedPoap?.transactionHash.substring(selectedPoap.transactionHash.length - 4)}
-            </p>
-            <p className="text-sm text-gray-700">
-              <strong>Time:</strong> {selectedPoap ? new Date(selectedPoap.timestamp).toLocaleString() : ''}
-            </p>
-          </div>
-          <button
-            onClick={() => setVerificationStatus('idle')}
-            className="mt-4 py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300"
-          >
-            Verify Another Location
-          </button>
-        </div>
-      )}
-      
-      {verificationStatus === 'error' && (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
-            <span className="text-red-600 text-2xl">✗</span>
-          </div>
-          <h3 className="text-xl font-semibold text-red-600 mb-2">Verification Failed</h3>
-          <p className="text-gray-600 text-sm">There was an issue verifying your travel</p>
-          {errorMessage && (
-            <p className="text-sm text-red-500 mt-1">{errorMessage}</p>
-          )}
-          <button
-            onClick={() => setVerificationStatus('idle')}
-            className="mt-4 py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-      
-      {poaps.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-xl font-bold mb-4">Your POAP Collection</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {poaps.map(poap => (
-              <div 
-                key={poap.id}
-                className="p-3 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer transition-colors"
-                onClick={() => setSelectedPoap(poap)}
-              >
-                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="font-bold text-blue-600">{poap.countryCode}</span>
-                </div>
-                <p className="text-center text-sm font-medium">{poap.country}</p>
-                <p className="text-center text-xs text-gray-500">{new Date(poap.timestamp).toLocaleDateString()}</p>
-              </div>
-            ))}
           </div>
         </div>
-      )}
-      
-      {selectedPoap && poaps.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-bold mb-2">POAP Details</h4>
-          <p className="text-sm"><strong>Country:</strong> {selectedPoap.country}</p>
-          <p className="text-sm"><strong>Date:</strong> {new Date(selectedPoap.timestamp).toLocaleString()}</p>
-          <p className="text-sm"><strong>Transaction:</strong> {selectedPoap.transactionHash.substring(0, 6)}...{selectedPoap.transactionHash.substring(selectedPoap.transactionHash.length - 4)}</p>
-          <p className="text-sm"><strong>Proof:</strong> {selectedPoap.verificationProof.substring(0, 6)}...{selectedPoap.verificationProof.substring(selectedPoap.verificationProof.length - 4)}</p>
-          <div className="mt-2">
-            <button className="text-sm text-blue-600">Share on Social Media</button>
+
+        <div className="mt-6">
+          {isNewCountry ? (
+            <button
+              ref={buttonRef}
+              onClick={requestPOAPMint}
+              disabled={!isButtonVisible}
+              className={`action-button ${buttonStyle} ${isButtonVisible ? '' : 'opacity-0'} w-full py-3 px-4 rounded-lg font-medium`}
+            >
+              {verificationStatus === 'idle' && "Mint Country POAP"}
+              {verificationStatus === 'scanning' && "Scanning Location..."}
+              {verificationStatus === 'verifying' && "Verifying..."}
+              {verificationStatus === 'success' && "✅ POAP Successfully Minted!"}
+              {verificationStatus === 'error' && "❌ Error - Try Again"}
+            </button>
+          ) : (
+            <div className="p-3 bg-green-50 rounded-lg text-center">
+              <p className="font-medium text-green-800">✅ Already in Collection</p>
+              <p className="text-sm text-green-700 mt-1">
+                You&apos;ve already minted a POAP for {currentLocation?.country || 'this country'}!
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {verificationStatus === 'error' && (
+          <p className="text-red-500 text-sm mt-2">{errorMessage}</p>
+        )}
+      </div>
+
+      {selectedPoap && (
+        <div className="success-banner">
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-full overflow-hidden mr-4 border-2 border-white">
+              <Image
+                src={`/flags/${selectedPoap.countryCode.toLowerCase()}.png`}
+                alt={`Flag of ${selectedPoap.country}`}
+                width={40}
+                height={40}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <div>
+              <h4 className="font-medium text-white">POAP Minted!</h4>
+              <p className="text-xs text-white/80">You&apos;ve added {selectedPoap.country} to your collection.</p>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
-} 
+}

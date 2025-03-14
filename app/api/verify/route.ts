@@ -26,7 +26,7 @@ const verifiedProofs: Record<string, PassportVerificationData> = {};
 
 // Set up the Self Protocol verifier with proper configuration
 const CELO_RPC_URL = process.env.CELO_RPC_URL || 'https://forno.celo.org';
-const SCOPE = 'stamper-travel-app'; // Must match the scope in PassportVerification.tsx
+const SCOPE = 'zkStamps-travel-app'; // Must match the scope in PassportVerification.tsx
 
 // Create the verifier according to Self Protocol docs
 let selfBackendVerifier: SelfBackendVerifier | null;

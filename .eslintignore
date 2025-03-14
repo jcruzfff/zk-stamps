@@ -1,0 +1,10 @@
+# Hardhat files
+hardhat.config.cjs
+scripts/deploy.cjs
+scripts/check-contract.cjs
+scripts/test-mint.cjs
+
+# Build artifacts
+artifacts/
+cache/
+node_modules/ 

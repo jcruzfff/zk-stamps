@@ -81,7 +81,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
   
   // IMPORTANT: HTTPS is required for Self SDK to work properly
   // Use your actual ngrok URL when testing locally
-  const NGROK_URL = 'https://5605-24-5-60-88.ngrok-free.app'; // Your current ngrok URL
+  const NGROK_URL = 'https://c832-166-144-250-126.ngrok-free.app'; // Your current ngrok URL
   
   // Use ngrok URL for development, or your regular origin for production
   const apiEndpoint = NGROK_URL ? `${NGROK_URL}/api/verify` : `${origin}/api/verify`;
@@ -114,8 +114,8 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
       try {
         // Create the Self app configuration
         const appBuilder = new SelfAppBuilder({
-          appName: "Stamper",
-          scope: "stamper-travel-app",
+          appName: "zkStamps",
+          scope: "zkStamps-travel-app",
           endpoint: `${apiEndpoint}?userId=${userId}`,
           endpointType: "https",
           userId: userId,
@@ -847,43 +847,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
             )}
           </div>
           
-          {/* Show debug button only in non-simplified mode */}
-          {!simplified && (
-            <button
-              onClick={() => {
-                console.log('Verification triggered');
-                
-                // Create test verification data
-                const testData: PassportVerificationData = {
-                  isHuman: true,
-                  name: "Test User",
-                  nationality: "United States",
-                  dateOfBirth: "1990-01-01",
-                  gender: "Other",
-                  passportNumber: "A12345678",
-                  issuingState: "USA",
-                  expiryDate: "2030-01-01",
-                  above18: true,
-                  fromEU: false,
-                  notOnOFACList: true,
-                  timestamp: new Date().toISOString(),
-                  verificationProof: "manual-test",
-                  userId: userId || ""
-                };
-                
-                // Set verified state and data
-                setVerificationData(testData);
-                setIsVerified(true);
-                
-                // Call the callback with test data
-                onVerifiedAction(testData);
-              }}
-              className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors mb-4"
-            >
-              Test Verification (Debug)
-            </button>
-          )}
-          
+          {/* Remove debug button while keeping the error message display */}
           {error && (
             <div className={`p-3 mb-4 text-sm ${simplified ? "text-white/90 bg-white/10" : "text-red-700 bg-red-100"} rounded-lg`}>
               {error}
@@ -893,4 +857,4 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
       )}
     </div>
   );
-} 
+}
