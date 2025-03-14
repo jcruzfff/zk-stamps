@@ -81,7 +81,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
   
   // IMPORTANT: HTTPS is required for Self SDK to work properly
   // Use your actual ngrok URL when testing locally
-  const NGROK_URL = 'https://c832-166-144-250-126.ngrok-free.app'; // Your current ngrok URL
+  const NGROK_URL = 'https://632e-166-144-250-126.ngrok-free.app'; // Your current ngrok URL
   
   // Use ngrok URL for development, or your regular origin for production
   const apiEndpoint = NGROK_URL ? `${NGROK_URL}/api/verify` : `${origin}/api/verify`;

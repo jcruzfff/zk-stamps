@@ -152,7 +152,7 @@
   justify-content: center;
   transform: scale(1);
   transform-origin: center 50%;
-  margin-top: -30vh;
+  margin-top: -10vh;
 }
 
 .globe-container canvas {

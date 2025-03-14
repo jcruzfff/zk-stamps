@@ -59,24 +59,29 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Convert POAPs to markers - limit the maximum number to improve performance
-  const markers = poaps.length > 30 
-    ? poaps.slice(0, 30).map(poap => ({
-        lat: poap.coordinates[0],
-        lng: poap.coordinates[1],
-        size: 2, // Larger marker size for better visibility
-        color: '#4BB4F1',
-        country: poap.country,
-        countryCode: poap.countryCode
-      }))
-    : poaps.map(poap => ({
-        lat: poap.coordinates[0],
-        lng: poap.coordinates[1],
-        size: 2,
-        color: '#4BB4F1',
-        country: poap.country,
-        countryCode: poap.countryCode
-      }));
+  // Convert POAPs to markers
+  const markers = poaps.map(poap => {
+    console.log(`POAP for ${poap.country}:`, poap.coordinates); // Debugging log
+    
+    // Check if the country is the US and provide correct coordinates if needed
+    let coordinates = poap.coordinates;
+    
+    // If this is the US and coordinates look incorrect (in the ocean), use fallback
+    if (poap.countryCode.toLowerCase() === 'us' && 
+        (Math.abs(poap.coordinates[0]) < 10 || Math.abs(poap.coordinates[1]) < 20)) {
+      console.log('Using fallback coordinates for US');
+      coordinates = [37.0902, -95.7129]; // Geographic center of US
+    }
+    
+    return {
+      lat: coordinates[0],
+      lng: coordinates[1],
+      size: 3, // Increased size for better visibility
+      color: '#C25B44', // 
+      country: poap.country,
+      countryCode: poap.countryCode
+    };
+  });
 
   // Preload globe textures to improve performance
   useEffect(() => {
@@ -129,12 +134,23 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
       globeRef.current.controls().autoRotate = true;
       globeRef.current.controls().autoRotateSpeed = 0.3;
       
-      // Adjust camera position to show more land mass and fill screen better
-      globeRef.current.pointOfView({
-        lat: 20,  // More north-facing view to show continents
-        lng: 20,   // Centered longitude
-        altitude: 2.5  // Slightly closer for better performance
-      });
+      // Check if we have a US marker and adjust view accordingly
+      const usMarker = markers.find(m => m.countryCode.toLowerCase() === 'us');
+      if (usMarker) {
+        // Adjust camera position to show US
+        globeRef.current.pointOfView({
+          lat: usMarker.lat,
+          lng: usMarker.lng,
+          altitude: 2.5
+        });
+      } else {
+        // Default view otherwise
+        globeRef.current.pointOfView({
+          lat: 20,
+          lng: 20,
+          altitude: 2.5
+        });
+      }
       
       // Additional globe settings for better visuals
       if (globeRef.current.controls) {
@@ -149,7 +165,7 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
         globeRef.current.controls().maxDistance = 400;
       }
     }
-  }, [globeReady]);
+  }, [globeReady, markers]);
   
   // Pause globe rotation and rendering when not in view to save resources
   useEffect(() => {

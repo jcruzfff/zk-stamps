@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAccount } from 'wagmi';
@@ -56,7 +56,7 @@ export default function POAPCollection() {
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
   // Function to refresh POAPs from localStorage
-  const refreshFromLocalStorage = () => {
+  const refreshFromLocalStorage = useCallback(() => {
     // Don't refresh too frequently (at most once every 500ms)
     const now = Date.now();
     if (now - lastRefreshTime < 500) {
@@ -88,7 +88,7 @@ export default function POAPCollection() {
         }
       }
     }
-  };
+  }, [lastRefreshTime]);
 
   // Fetch POAPs from blockchain if connected
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function POAPCollection() {
     
     // Remove the polling interval - we'll rely on events instead
     return () => {};
-  }, [isConnected, address]);
+  }, [isConnected, address, displayedPoaps.length, refreshFromLocalStorage]);
   
   // Add a listener for localStorage changes to update POAPs when minted
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function POAPCollection() {
         window.removeEventListener('poap-minted', handlePoapMinted);
       };
     }
-  }, [lastRefreshTime]);
+  }, [lastRefreshTime, refreshFromLocalStorage]);
 
   return (
     <div className="w-full relative">
