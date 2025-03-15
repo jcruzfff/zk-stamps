@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Helper function to add CORS headers
 function addCorsHeaders(response: NextResponse): NextResponse {
