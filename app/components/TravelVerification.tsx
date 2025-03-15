@@ -605,7 +605,7 @@ export default function TravelVerification({
             )}
             
             {/* Location information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-gray-50  rounded-lg">
               <h4 className="text-sm font-medium text-gray-700 mb-1">Current Location:</h4>
               <h3 className="text-lg font-medium mb-2">
                 {currentLocation?.country || 'Detecting...'}
@@ -646,9 +646,7 @@ export default function TravelVerification({
           ) : (
             <div className="p-3 bg-green-50 rounded-lg text-center">
               <p className="font-medium text-green-800">✅ Already in Collection</p>
-              <p className="text-sm text-green-700 mt-1">
-                You&apos;ve already minted a POAP for {currentLocation?.country || 'this country'}!
-              </p>
+             
             </div>
           )}
         </div>
