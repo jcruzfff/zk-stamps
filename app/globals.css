@@ -330,6 +330,13 @@
   z-index: 30;
 }
 
+.rewards-nav {
+  background-color: rgb(255, 255, 255);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: black;
+}
+
 .nav-logo {
   display: flex;
   align-items: center;
