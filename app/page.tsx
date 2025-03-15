@@ -14,8 +14,9 @@ import WorldGlobe from './components/WorldGlobe';
 import QRProofSheet from './components/QRProofSheet';
 import TravelStats from './components/TravelStats';
 import POAPCollection from './components/POAPCollection';
-import UpcomingTrips from './components/UpcomingTrips';
+import UpcomingTrips, { Trip } from './components/UpcomingTrips';
 import TripSuggestions from './components/TripSuggestions';
+import AddTripForm, { TripData } from './components/AddTripForm';
 
 type POAP = {
   id: string;
@@ -89,6 +90,10 @@ export default function Home() {
   });
   const sheetRef = useRef<HTMLDivElement>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
+
+  // New state for trip management
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [showAddTripForm, setShowAddTripForm] = useState(false);
 
   // Load POAPs from localStorage on component mount
   useEffect(() => {
@@ -375,6 +380,60 @@ export default function Home() {
     );
   };
 
+  // Add trip to state and localStorage
+  const handleAddTrip = (newTrip: TripData) => {
+    setTrips(prevTrips => {
+      const updatedTrips = [...prevTrips, newTrip];
+      // Store in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('trips', JSON.stringify(updatedTrips));
+      }
+      return updatedTrips;
+    });
+    setShowAddTripForm(false);
+  };
+  
+  // Show Add Trip Form and expand sheet
+  const showAddTripFormHandler = () => {
+    setShowAddTripForm(true);
+    setIsBottomSheetExpanded(true);
+  };
+  
+  // Handle cancel from AddTripForm
+  const handleCancelAddTrip = () => {
+    setShowAddTripForm(false);
+    setIsBottomSheetExpanded(false);
+  };
+  
+  // Delete trip from state and localStorage
+  const handleDeleteTrip = (tripId: string) => {
+    setTrips(prevTrips => {
+      const updatedTrips = prevTrips.filter(trip => trip.id !== tripId);
+      // Update localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('trips', JSON.stringify(updatedTrips));
+      }
+      return updatedTrips;
+    });
+  };
+  
+  // Load trips from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTrips = localStorage.getItem('trips');
+      if (savedTrips) {
+        try {
+          const parsedTrips = JSON.parse(savedTrips);
+          if (Array.isArray(parsedTrips)) {
+            setTrips(parsedTrips);
+          }
+        } catch (error) {
+          console.error('Error loading trips from localStorage:', error);
+        }
+      }
+    }
+  }, []);
+
   // Render the appropriate step
   const renderStep = () => {
     switch (currentStep) {
@@ -449,7 +508,7 @@ export default function Home() {
             {/* Bottom sheet */}
             <div 
               ref={sheetRef}
-              className={`bottom-sheet ${isBottomSheetExpanded ? 'expanded' : ''}`}
+              className={`bottom-sheet ${isBottomSheetExpanded ? 'expanded' : ''} ${showAddTripForm ? 'has-form' : ''}`}
             >
               <div 
                 className="sheet-header" 
@@ -463,36 +522,53 @@ export default function Home() {
                   {isBottomSheetExpanded ? 'Swipe down to minimize' : 'Swipe up for more'}
                 </div>
               </div>
-              <div className="sheet-content ">
-                {/* Upcoming Trips - Using the UpcomingTrips component */}
-                <h2 className="section-title">Upcoming Trip</h2>
-                <UpcomingTrips />
-                
-                {/* Trip Suggestions - Using the TripSuggestions component */}
-                <h2 className="text-base pt-4 pb-4">Trip Suggestions</h2>
-                <TripSuggestions />
-                
-                {/* POAPs Collected - Using the POAPCollection component */}
-                <h2 className="section-title">POAPs Collected</h2>
-                <POAPCollection />
-                
-                {/* Travel Verification - Using the TravelVerification component */}
-                <h2 className="section-title">Travel Verification</h2>
-                <div id="travel-verification">
-                  <TravelVerification 
-                    isPassportVerified={isPassportVerified} 
-                    onPoapMinted={handlePoapMinted}
+              <div className="sheet-content">
+                {showAddTripForm ? (
+                  <AddTripForm 
+                    onAddTripAction={handleAddTrip} 
+                    onCancelAction={() => handleCancelAddTrip()} 
                   />
-                </div>
-                
-                {/* Stats - Using the TravelStats component */}
-                <h2 className="section-title">Places you&apos;ve seen</h2>
-                <TravelStats poaps={poaps} />
-                
-                {/* Add Trip Button */}
-                <button className="add-trip-button">
-                  + Add Trip
-                </button>
+                ) :
+                  <>
+                    {/* Only show Upcoming Trips and Trip Suggestions if there are trips */}
+                    {trips.length > 0 && (
+                      <>
+                        {/* Upcoming Trips - Using the UpcomingTrips component */}
+                        <h2 className="section-title">Upcoming Trip</h2>
+                        <UpcomingTrips trips={trips} onDeleteTrip={handleDeleteTrip} />
+                        
+                        {/* Trip Suggestions - Using the TripSuggestions component */}
+                        <h2 className="text-base pt-4 pb-4">Trip Suggestions</h2>
+                        <TripSuggestions />
+                      </>
+                    )}
+                    
+                    {/* POAPs Collected - Using the POAPCollection component */}
+                    <h2 className="section-title">POAPs Collected</h2>
+                    <POAPCollection />
+                    
+                    {/* Travel Verification - Using the TravelVerification component */}
+                    <h2 className="section-title">Travel Verification</h2>
+                    <div id="travel-verification">
+                      <TravelVerification 
+                        isPassportVerified={isPassportVerified} 
+                        onPoapMinted={handlePoapMinted}
+                      />
+                    </div>
+                    
+                    {/* Stats - Using the TravelStats component */}
+                    <h2 className="section-title">Places you&apos;ve seen</h2>
+                    <TravelStats poaps={poaps} />
+                    
+                    {/* Add Trip Button */}
+                    <button 
+                      className="w-full py-3 mt-6 rounded-full bg-[#45A7E8] text-white font-medium flex items-center justify-center hover:bg-[#3A8AC2] transition-colors"
+                      onClick={() => showAddTripFormHandler()}
+                    >
+                      + Add Trip
+                    </button>
+                  </>
+                }
               </div>
             </div>
           </div>

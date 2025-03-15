@@ -199,7 +199,7 @@ export default function POAPMemoryPage() {
         </header>
         
         {/* Main content */}
-        <main className="flex-grow px-4 py-4 mb-8 max-w-2xl mx-auto w-full">
+        <main className="flex-grow px-4 py-4 mb-2 max-w-2xl mx-auto w-full">
           {/* Country flag and info */}
           <div className="flex flex-col items-center mb-2">
           

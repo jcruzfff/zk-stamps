@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 
 type POAP = {
   id: string;
@@ -23,29 +24,72 @@ export default function TravelStats({ poaps }: { poaps: POAP[] }) {
   
   // Use mock data if no POAPs are available
   const stats = {
-    worldPercentage: poaps.length ? worldPercentage : 11,
-    totalMiles: poaps.length ? totalMiles : 402193,
-    countriesVisited: poaps.length ? countriesVisited : 18,
-    citiesVisited: poaps.length ? citiesVisited : 121
+    worldPercentage: poaps.length ? worldPercentage : 1,
+    totalMiles: poaps.length ? totalMiles : 0,
+    countriesVisited: poaps.length ? countriesVisited : 1,
+    citiesVisited: poaps.length ? citiesVisited : 1
   };
   
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="text-3xl font-bold">{stats.worldPercentage}%</div>
-        <div className="text-gray-600 text-sm">of the world</div>
+    <div className="grid grid-cols-2 gap-[6px]">
+      {/* World Percentage Card */}
+      <div className="rounded-xl overflow-hidden relative h-[180px]">
+        <Image 
+          src="/world-image.png"
+          alt="World map background"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+        />
+        <div className="absolute top-6 left-6 text-white">
+          <div className="text-5xl font-bold">{stats.worldPercentage}%</div>
+          <div className="text-white text-xl mt-1">of the world</div>
+        </div>
       </div>
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="text-3xl font-bold">{stats.totalMiles.toLocaleString()}</div>
-        <div className="text-gray-600 text-sm">miles</div>
+      
+      {/* Miles Card */}
+      <div className="rounded-xl overflow-hidden relative h-[180px]">
+        <Image 
+          src="/road-image.png"
+          alt="Road background"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+        />
+        <div className="absolute top-6 left-6 text-black">
+          <div className="text-5xl font-bold">{stats.totalMiles.toLocaleString()}</div>
+          <div className="text-black text-xl mt-1">miles</div>
+        </div>
       </div>
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="text-3xl font-bold">{stats.countriesVisited}</div>
-        <div className="text-gray-600 text-sm">countries</div>
+      
+      {/* Countries Card */}
+      <div className="rounded-xl overflow-hidden relative h-[180px]">
+        <Image 
+          src="/countries-image.png"
+          alt="Countries background"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+        />
+        <div className="absolute top-6 left-6 text-black">
+          <div className="text-5xl font-bold">{stats.countriesVisited}</div>
+          <div className="text-black text-xl mt-1">country</div>
+        </div>
       </div>
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="text-3xl font-bold">{stats.citiesVisited}</div>
-        <div className="text-gray-600 text-sm">cities</div>
+      
+      {/* Cities Card */}
+      <div className="rounded-xl overflow-hidden relative h-[180px]">
+        <Image 
+          src="/cities-image.png"
+          alt="Cities background"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+        />
+        <div className="absolute top-6 left-6 text-black">
+          <div className="text-5xl font-bold">{stats.citiesVisited}</div>
+          <div className="text-black text-xl mt-1">city</div>
+        </div>
       </div>
     </div>
   );

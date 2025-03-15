@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
-type Trip = {
+export type Trip = {
   id: string;
   type: 'flight' | 'train' | 'bus' | 'car';
   from: string;
@@ -12,19 +12,40 @@ type Trip = {
   time: string;
 };
 
-export default function UpcomingTrips() {
-  // Mock data for upcoming trips
-  const [trips] = useState<Trip[]>([
-    {
-      id: '1',
-      type: 'flight',
-      from: 'SFO',
-      to: 'BOS',
-      date: '04/15/2025',
-      time: '6:30pm'
-    }
-  ]);
+interface UpcomingTripsProps {
+  trips: Trip[];
+  onDeleteTrip: (tripId: string) => void;
+}
 
+export default function UpcomingTrips({ trips, onDeleteTrip }: UpcomingTripsProps) {
+  // State to track which trip's menu is open
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Toggle menu for a specific trip
+  const toggleMenu = (tripId: string) => {
+    setOpenMenuId(openMenuId === tripId ? null : tripId);
+  };
+
+  // Close all menus (used when clicking outside)
+  const closeAllMenus = () => {
+    setOpenMenuId(null);
+  };
+
+  // Handle delete action
+  const handleDelete = (e: React.MouseEvent, tripId: string) => {
+    e.stopPropagation(); // Prevent bubbling to parent elements
+    onDeleteTrip(tripId);
+    setOpenMenuId(null);
+  };
+
+  // Add a click handler to close menus when clicking outside
+  const handleOutsideClick = (e: React.MouseEvent) => {
+    // Only close if clicking directly on the container, not on any of its children
+    if (e.target === e.currentTarget) {
+      closeAllMenus();
+    }
+  };
+  
   if (trips.length === 0) {
     return (
       <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center">
@@ -34,7 +55,7 @@ export default function UpcomingTrips() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onClick={handleOutsideClick}>
       {trips.map(trip => (
         <div key={trip.id} className="bg-gray-100 rounded-[20px] overflow-hidden flex relative">
           {/* Left blue section with plane icon */}
@@ -42,7 +63,7 @@ export default function UpcomingTrips() {
             {trip.type === 'flight' && (
               <div className="relative w-[42px] h-[42px]">
                 <Image 
-                  src="airplace.svg" 
+                  src="/airplace.svg" 
                   alt="Airplane" 
                   fill
                   style={{ filter: 'brightness(0) invert(1)' }} // Make the icon white
@@ -64,11 +85,30 @@ export default function UpcomingTrips() {
           
           {/* Menu button on the top right */}
           <div className="absolute top-6 right-6">
-            <button className="w-4 h-4 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <button 
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMenu(trip.id);
+              }}
+              aria-label="Trip options"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
               </svg>
             </button>
+            
+            {/* Dropdown menu */}
+            {openMenuId === trip.id && (
+              <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg py-1 z-10">
+                <button
+                  onClick={(e) => handleDelete(e, trip.id)}
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
+                >
+                  Delete trip
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ))}

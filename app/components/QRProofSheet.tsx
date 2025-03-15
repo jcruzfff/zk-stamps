@@ -120,52 +120,135 @@ export default function QRProofSheet({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center backdrop-blur-sm">
       <div 
         ref={sheetRef}
-        className="bg-white rounded-xl w-full max-w-md mx-4 p-6"
+        className="bg-white rounded-xl w-full max-w-md mx-4 p-8 relative shadow-2xl"
       >
-        <h2 className="text-2xl font-bold mb-4">Your Passport Proof</h2>
-        <p className="text-gray-600 mb-6">
-          Share this QR code to prove your identity with the information you&apos;ve selected to disclose.
+        {/* Close button (X) in top right */}
+        <button 
+          onClick={onCloseAction}
+          className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          aria-label="Close"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5 text-gray-500">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-3 -left-3 w-24 h-24 text-[#45A7E8] opacity-20">
+          <svg viewBox="0 0 100 100" fill="currentColor">
+            <circle cx="20" cy="20" r="10" />
+            <circle cx="60" cy="20" r="15" />
+            <circle cx="20" cy="60" r="15" />
+            <circle cx="60" cy="60" r="10" />
+          </svg>
+        </div>
+        <div className="absolute -bottom-3 -right-3 w-24 h-24 text-[#45A7E8] opacity-20 rotate-45">
+          <svg viewBox="0 0 100 100" fill="currentColor">
+            <circle cx="20" cy="20" r="10" />
+            <circle cx="60" cy="20" r="15" />
+            <circle cx="20" cy="60" r="15" />
+            <circle cx="60" cy="60" r="10" />
+          </svg>
+        </div>
+        
+        <h2 className="text-3xl font-bold mb-4 text-center text-[#45A7E8]">Passport Proof</h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Share this QR code to prove your passport identity.
         </p>
         
         <div className="flex justify-center py-4">
-          <div className="bg-white p-4 rounded-md border-2 border-gray-200">
-            <QRCodeSVG value={qrData} size={250} />
+          <div className="bg-white p-4 rounded-xl border-2 border-[#45A7E8]/20 shadow-md">
+            <QRCodeSVG 
+              value={qrData} 
+              size={250}
+              bgColor={"#FFFFFF"}
+              fgColor={"#000000"}
+              level={"M"}
+              includeMargin={false}
+            />
           </div>
         </div>
         
-        <div className="mt-4 p-3 bg-blue-50 rounded-md">
-          <h3 className="font-medium text-blue-800 mb-1">Information included:</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            {proofSettings.showIsHuman && <li>✓ Human verification</li>}
-            {proofSettings.showIsAdult && <li>✓ Age verification (18+)</li>}
-            {proofSettings.showNotOnSanctionsList && <li>✓ Sanctions list check</li>}
-            {proofSettings.showNationality && <li>✓ Nationality</li>}
-            {proofSettings.showName && <li>✓ Name</li>}
-            {proofSettings.showDateOfBirth && <li>✓ Date of birth</li>}
-            {proofSettings.showGender && <li>✓ Gender</li>}
-            {proofSettings.showPassportNumber && <li>✓ Passport number</li>}
-            {proofSettings.showIssuingState && <li>✓ Issuing country</li>}
-            {proofSettings.showExpiryDate && <li>✓ Expiry date</li>}
-          </ul>
+        <div className="mt-4 p-4 bg-[#45A7E8]/10 rounded-xl border border-[#45A7E8]/20">
+          <h3 className="font-medium text-[#45A7E8] mb-2">Information included:</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {proofSettings.showIsHuman && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Human verification</span>
+              </div>
+            }
+            {proofSettings.showIsAdult && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Age verification (18+)</span>
+              </div>
+            }
+            {proofSettings.showNotOnSanctionsList && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Sanctions list check</span>
+              </div>
+            }
+            {proofSettings.showNationality && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Nationality</span>
+              </div>
+            }
+            {proofSettings.showIssuingState && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Issuing country</span>
+              </div>
+            }
+            {proofSettings.showName && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Name</span>
+              </div>
+            }
+            {proofSettings.showDateOfBirth && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Date of birth</span>
+              </div>
+            }
+            {proofSettings.showGender && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Gender</span>
+              </div>
+            }
+            {proofSettings.showPassportNumber && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Passport number</span>
+              </div>
+            }
+            {proofSettings.showExpiryDate && 
+              <div className="flex items-center">
+                <span className="text-[#45A7E8] mr-2">✓</span>
+                <span className="text-sm text-gray-700">Expiry date</span>
+              </div>
+            }
+          </div>
         </div>
         
-        <div className="mt-6 flex space-x-3">
-          <button
-            onClick={onCloseAction}
-            className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-          >
-            Close
-          </button>
+        <div className="mt-6 flex justify-center">
           <button
             onClick={() => {
               // Add share functionality if needed
               alert('Sharing functionality would be implemented here');
             }}
-            className="flex-1 py-3 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+            className="w-full py-3 bg-[#45A7E8] text-white rounded-full hover:bg-[#3A8AC2] transition-colors font-medium shadow-md hover:shadow-lg flex items-center justify-center"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
             Share
           </button>
         </div>
