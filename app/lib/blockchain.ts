@@ -306,7 +306,7 @@ export const getCountriesVisitedByUser = async (
       args: [userAddress],
     }) as string[];
     
-    console.log('🔄 [Blockchain] Retrieved countries from blockchain:', countriesVisited);
+  
     
     // Cache the results in localStorage for future use
     if (typeof window !== 'undefined') {
@@ -323,9 +323,9 @@ export const getCountriesVisitedByUser = async (
     }
     
     return countriesVisited;
-  } catch (error) {
-    console.error('🔴 [Blockchain] Error getting countries visited by user:', error);
+  } catch  {
+    
     // In case of error, return empty array
     return [];
   }
-}; 
+};

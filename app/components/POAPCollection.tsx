@@ -68,6 +68,11 @@ export default function POAPCollection() {
     //   console.log('[POAPCollection] Refreshing from localStorage');
     // }
     
+    // If already refreshing, skip this call
+    if (isRefreshing.current) {
+      return;
+    }
+    
     isRefreshing.current = true;
     setIsLoading(true);
     
@@ -95,6 +100,7 @@ export default function POAPCollection() {
         //   console.log('[POAPCollection] Updating display with POAPs from localStorage:', uniquePoaps);
         // }
         
+        // Use setTimeout to ensure state updates happen outside of any ongoing render cycle
         setTimeout(() => {
           setDisplayedPoaps(uniquePoaps);
           setIsLoading(false);
@@ -102,13 +108,19 @@ export default function POAPCollection() {
           setLastUpdateTimestamp(new Date().toISOString());
         }, 0);
       } else {
-        setIsLoading(false);
-        isRefreshing.current = false;
+        // Use setTimeout for safety
+        setTimeout(() => {
+          setIsLoading(false);
+          isRefreshing.current = false;
+        }, 0);
       }
     } catch (err) {
       console.error('[POAPCollection] Error refreshing from localStorage:', err);
-      setIsLoading(false);
-      isRefreshing.current = false;
+      // Use setTimeout for safety
+      setTimeout(() => {
+        setIsLoading(false);
+        isRefreshing.current = false;
+      }, 0);
     }
   }, []);
 
@@ -180,13 +192,20 @@ export default function POAPCollection() {
 
   // Listen for updates from localStorage
   useEffect(() => {
-    // Define a handler for storage events
+    // Define a handler for storage events that uses RAF to avoid render-phase updates
     const handleStorageChange = () => {
-      refreshFromLocalStorage();
+      // Use requestAnimationFrame to ensure we're not in a render cycle
+      requestAnimationFrame(() => {
+        if (!isRefreshing.current) {
+          refreshFromLocalStorage();
+        }
+      });
     };
     
-    // Also refresh initially
-    refreshFromLocalStorage();
+    // Refresh initially, but wrap in RAF for safety
+    requestAnimationFrame(() => {
+      refreshFromLocalStorage();
+    });
     
     // Add event listener for storage events
     window.addEventListener('storage', handleStorageChange);
@@ -292,7 +311,7 @@ export default function POAPCollection() {
                       target.src = '/flags/placeholder.svg';
                     }}
                   />
-                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-[#45A7E8] rounded-full border-2 border-white flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -300,17 +319,24 @@ export default function POAPCollection() {
                 </div>
               </Link>
             )) : (
-              <div className="text-center py-8 bg-gray-50 rounded-lg w-full">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h2a2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2v1.5" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2v1.5M20.488 11h-2.488m-2 2h-2m-2 2h-2" />
-                  </svg>
+              <div className="bg-white p-6 rounded-lg shadow-md mb-">
+                <div className="text-center">
+                  <div className="relative mx-auto mb-8">
+                    <Image 
+                      src="/passport-section.png"
+                      alt="Passport stamp illustration"
+                      width={340}
+                      height={224}
+                      className="object-contain rounded-[10px]"
+                    />
+                  </div>
+                  <div className="space-y-3 max-w-sm mx-auto mb-4">
+                    <h3 className="text-xl font-bold text-gray-800">No stamps in your collection yet</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Build a visual record of your travels.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-gray-600 font-medium text-lg">No POAPs in your collection yet</p>
-                <p className="text-gray-500 text-sm mt-2 mb-4">
-                  Start your journey by minting a POAP for your current location
-                </p>
               </div>
             )}
           </div>
@@ -321,6 +347,57 @@ export default function POAPCollection() {
         .country-flag-item:hover .country-flag {
           transform: scale(1.05);
           transition: transform 0.3s ease;
+        }
+        
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0px); }
+        }
+        
+        @keyframes ping-slow {
+          0% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(2); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(100%); }
+          100% { transform: translateX(300%); }
+        }
+        
+        @keyframes fade-in {
+          0% { opacity: 0; transform: translateY(5px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        .animate-ping-slow {
+          animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        
+        .animate-progress {
+          animation: progress 3s ease-in-out infinite;
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out forwards;
+        }
+        
+        .animation-delay-300 {
+          animation-delay: 0.3s;
+        }
+        
+        .animation-delay-500 {
+          animation-delay: 0.5s;
+        }
+        
+        .animation-delay-600 {
+          animation-delay: 0.6s;
         }
       `}</style>
     </div>

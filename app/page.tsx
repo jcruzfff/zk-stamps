@@ -246,8 +246,11 @@ export default function Home() {
           localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
           
           // Force trigger any components that might be listening for localStorage changes
-          window.dispatchEvent(new Event('storage'));
-          window.dispatchEvent(new Event('poap-minted'));
+          // Move to next event loop tick to avoid React render phase setState errors
+          setTimeout(() => {
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('poap-minted'));
+          }, 0);
         } catch (err) {
           console.error('🔴 [Home] Failed to save POAPs to localStorage:', err);
         }
@@ -330,7 +333,7 @@ export default function Home() {
             <div className="px-4 py-3 border-b border-gray-200">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#45A7E8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -347,19 +350,19 @@ export default function Home() {
                 <p className="font-medium mb-1">Disclosed Information:</p>
                 <ul className="space-y-1">
                   {passportData?.isHuman && <li className="text-sm flex items-center">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 mr-1 text-[#45A7E8]" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                     </svg>
                     Real Human
                   </li>}
                   {passportData?.above18 && <li className="text-sm flex items-center">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 mr-1 text-[#45A7E8]" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                     </svg>
                     Above 18 years old
                   </li>}
                   {passportData?.notOnOFACList && <li className="text-sm flex items-center">
-                    <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 mr-1 text-[#45A7E8]" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                     </svg>
                     Not on OFAC list
@@ -543,10 +546,6 @@ export default function Home() {
                       </>
                     )}
                     
-                    {/* POAPs Collected - Using the POAPCollection component */}
-                    <h2 className="section-title">POAPs Collected</h2>
-                    <POAPCollection />
-                    
                     {/* Travel Verification - Using the TravelVerification component */}
                     <h2 className="section-title">Travel Verification</h2>
                     <div id="travel-verification">
@@ -556,13 +555,17 @@ export default function Home() {
                       />
                     </div>
                     
+                    {/* POAPs Collected - Using the POAPCollection component */}
+                    <h2 className="section-title">POAPs Collected</h2>
+                    <POAPCollection />
+                    
                     {/* Stats - Using the TravelStats component */}
                     <h2 className="section-title">Places you&apos;ve seen</h2>
                     <TravelStats poaps={poaps} />
                     
                     {/* Add Trip Button */}
                     <button 
-                      className="w-full py-3 mt-6 rounded-full bg-[#45A7E8] text-white font-medium flex items-center justify-center hover:bg-[#3A8AC2] transition-colors"
+                      className="w-full py-3 mt-6 rounded-full bg-[#03AEEC] text-white font-medium flex items-center justify-center hover:bg-[#3A8AC2] transition-colors"
                       onClick={() => showAddTripFormHandler()}
                     >
                       + Add Trip

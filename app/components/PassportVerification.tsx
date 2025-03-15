@@ -690,7 +690,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
         <h2 className={`mb-4 ${simplified ? "text-xl font-semibold text-white" : "text-xl font-semibold text-gray-800"}`}>Verification Successful!</h2>
         
         <div className={`w-16 h-16 mb-4 ${simplified ? "bg-white" : "bg-green-100"} rounded-full flex items-center justify-center`}>
-          <svg className={`w-10 h-10 ${simplified ? "text-blue-500" : "text-green-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg className={`w-10 h-10 ${simplified ? "text-[#45A7E8]" : "text-[#45A7E8]"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
@@ -736,7 +736,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
         <h2 className={`mb-4 ${simplified ? "text-xl font-semibold text-white" : "text-xl font-semibold text-gray-800"}`}>Verification Detected!</h2>
         
         <div className={`w-16 h-16 mb-4 ${simplified ? "bg-white" : "bg-green-100"} rounded-full flex items-center justify-center`}>
-          <svg className={`w-10 h-10 ${simplified ? "text-blue-500" : "text-green-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg className={`w-10 h-10 ${simplified ? "text-[#45A7E8]" : "text-[#45A7E8]"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
@@ -757,7 +757,7 @@ export default function PassportVerification({ onVerifiedAction, simplified = fa
           <div className="flex flex-col gap-3 mt-4 w-full">
             <button 
               onClick={retryVerification}
-              className={`w-full px-4 py-2 font-medium ${simplified ? "text-blue-600 bg-white" : "text-white bg-blue-600"} rounded-lg hover:opacity-90 transition-opacity`}
+              className={`w-full px-4 py-2 font-medium ${simplified ? "text-[#45A7E8] bg-white" : "text-white bg-blue-600"} rounded-lg hover:opacity-90 transition-opacity`}
             >
               Retry Verification
             </button>

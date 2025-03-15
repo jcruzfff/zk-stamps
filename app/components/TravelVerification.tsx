@@ -201,8 +201,10 @@ export default function TravelVerification({
               console.log('🔶 [TravelVerification] Successfully stored in localStorage');
               
               // Dispatch custom events to notify other components
-              window.dispatchEvent(new Event('storage-updated'));
-              window.dispatchEvent(new Event('poap-minted'));
+              setTimeout(() => {
+                window.dispatchEvent(new Event('storage-updated'));
+                window.dispatchEvent(new Event('poap-minted'));
+              }, 0);
             } else {
              
             }
@@ -505,8 +507,10 @@ export default function TravelVerification({
       localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
       
       // Dispatch storage event to notify other components
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('poap-minted'));
+      setTimeout(() => {
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('poap-minted'));
+      }, 0);
       
       // Only log in development mode
       if (process.env.NODE_ENV === 'development') {
@@ -586,45 +590,79 @@ export default function TravelVerification({
   };
 
   return (
-    <div className="travel-verification shadow-sm rounded-lg overflow-hidden">
-      <div className="p-6 pb-4">
+    <div className="">
+      <div className="pb-4">
         <div className="flex items-start">
           <div className="flex-1">
-            {/* Simplified welcome message */}
-            <h3 className="text-xl font-semibold mb-4">
-              {currentLocation ? `Welcome to ${currentLocation.country}!` : 'Detecting location...'}
-            </h3>
+           
             
             {isNewCountry && (
-              <div className="p-3 bg-blue-50 rounded-lg mb-4">
-                <p className="font-medium text-blue-800">✨ New Country Detected!</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  This is your current location. Mint a POAP to add it to your collection!
-                </p>
+              <div className="p-4 bg-white border border-[#E3F2FD] rounded-lg mb-8 shadow-sm relative overflow-hidden">
+                {/* Decorative elements */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#45A7E8] to-[#03AEEC]"></div>
+                <div className="absolute top-1 right-3 w-12 h-12 rounded-full bg-blue-50 opacity-20"></div>
+                <div className="absolute bottom-2 left-2 w-8 h-8 rounded-full bg-blue-50 opacity-20"></div>
+                
+                <div className="flex items-start space-x-3">
+                  
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-800 text-lg flex items-center">
+                      New Country Detected!
+                      <span className="ml-2 inline-block animate-pulse">✨</span>
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      This is your first visit to this location. Mint a POAP below to add it to your travel collection!
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
             
             {/* Location information */}
-            <div className="bg-gray-50  rounded-lg">
-              <h4 className="text-sm font-medium text-gray-700 mb-1">Current Location:</h4>
-              <h3 className="text-lg font-medium mb-2">
-                {currentLocation?.country || 'Detecting...'}
-              </h3>
-              
-              {currentLocation && (
-                <p className="text-sm text-gray-500 mb-2">
-                  Coordinates: {currentLocation.coordinates[0].toFixed(4)}, {currentLocation.coordinates[1].toFixed(4)}
-                </p>
-              )}
-              
-              {gpsStatus === 'success' && (
-                <p className="text-sm text-green-600 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  GPS location confirmed
-                </p>
-              )}
+            <div className="bg-gray-50 mb-4 rounded-lg relative">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 pr-16">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Current Location:</h4>
+                  <h3 className="text-2xl font-semibold mb-2 text-gray-800">
+                    {currentLocation?.country || 'Detecting...'}
+                  </h3>
+                  
+                  {currentLocation && (
+                    <p className="text-sm text-gray-500 mb-2">
+                      Coordinates: {currentLocation.coordinates[0].toFixed(4)}, {currentLocation.coordinates[1].toFixed(4)}
+                    </p>
+                  )}
+                  
+                  {gpsStatus === 'success' && (
+                    <p className="text-sm text-[#45A7E8] flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      GPS location confirmed
+                    </p>
+                  )}
+                </div>
+                
+                {/* Country flag */}
+                {currentLocation && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <div className="w-16 h-16 rounded-full overflow-hidden ">
+                      <Image
+                        src={`/flags/${currentLocation.countryCode.toLowerCase()}.png`}
+                        alt={`Flag of ${currentLocation.country}`}
+                        width={80}
+                        height={80}
+                        className="object-cover w-full h-full"
+                        onError={(e) => {
+                          // Fallback if flag image doesn't exist
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/flags/placeholder.svg';
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -635,7 +673,7 @@ export default function TravelVerification({
               ref={buttonRef}
               onClick={requestPOAPMint}
               disabled={!isButtonVisible}
-              className={`action-button ${buttonStyle} ${isButtonVisible ? '' : 'opacity-0'} w-full py-3 px-4 rounded-lg font-medium`}
+              className={`action-button ${buttonStyle} ${isButtonVisible ? '' : 'opacity-0'} w-full py-3 px-4 rounded-[42px] font-medium`}
             >
               {verificationStatus === 'idle' && "Mint Country POAP"}
               {verificationStatus === 'scanning' && "Scanning Location..."}
@@ -644,8 +682,8 @@ export default function TravelVerification({
               {verificationStatus === 'error' && "❌ Error - Try Again"}
             </button>
           ) : (
-            <div className="p-3 bg-green-50 rounded-lg text-center">
-              <p className="font-medium text-green-800">✅ Already in Collection</p>
+            <div className="p-3 bg-blue-50 rounded-lg text-center">
+              <p className="font-medium text-[#45A7E8]">Already in Collection</p>
              
             </div>
           )}
@@ -657,20 +695,16 @@ export default function TravelVerification({
       </div>
 
       {selectedPoap && (
-        <div className="success-banner">
+        <div className="success-banner bg-gradient-to-r from-[#45A7E8] to-[#03AEEC] p-4 rounded-lg shadow-md text-white mb-2">
           <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full overflow-hidden mr-4 border-2 border-white">
-              <Image
-                src={`/flags/${selectedPoap.countryCode.toLowerCase()}.png`}
-                alt={`Flag of ${selectedPoap.country}`}
-                width={40}
-                height={40}
-                className="object-cover w-full h-full"
-              />
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mr-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
             </div>
             <div>
-              <h4 className="font-medium text-white">POAP Minted!</h4>
-              <p className="text-xs text-white/80">You&apos;ve added {selectedPoap.country} to your collection.</p>
+              <h4 className="font-medium text-white text-lg">POAP Successfully Minted!</h4>
+              <p className="text-sm text-white/90">Added {selectedPoap.country} to your collection</p>
             </div>
           </div>
         </div>
