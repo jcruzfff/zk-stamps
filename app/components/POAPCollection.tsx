@@ -68,11 +68,6 @@ export default function POAPCollection() {
     //   console.log('[POAPCollection] Refreshing from localStorage');
     // }
     
-    // If already refreshing, skip this call
-    if (isRefreshing.current) {
-      return;
-    }
-    
     isRefreshing.current = true;
     setIsLoading(true);
     
@@ -100,7 +95,6 @@ export default function POAPCollection() {
         //   console.log('[POAPCollection] Updating display with POAPs from localStorage:', uniquePoaps);
         // }
         
-        // Use setTimeout to ensure state updates happen outside of any ongoing render cycle
         setTimeout(() => {
           setDisplayedPoaps(uniquePoaps);
           setIsLoading(false);
@@ -108,19 +102,13 @@ export default function POAPCollection() {
           setLastUpdateTimestamp(new Date().toISOString());
         }, 0);
       } else {
-        // Use setTimeout for safety
-        setTimeout(() => {
-          setIsLoading(false);
-          isRefreshing.current = false;
-        }, 0);
+        setIsLoading(false);
+        isRefreshing.current = false;
       }
     } catch (err) {
       console.error('[POAPCollection] Error refreshing from localStorage:', err);
-      // Use setTimeout for safety
-      setTimeout(() => {
-        setIsLoading(false);
-        isRefreshing.current = false;
-      }, 0);
+      setIsLoading(false);
+      isRefreshing.current = false;
     }
   }, []);
 
@@ -192,20 +180,13 @@ export default function POAPCollection() {
 
   // Listen for updates from localStorage
   useEffect(() => {
-    // Define a handler for storage events that uses RAF to avoid render-phase updates
+    // Define a handler for storage events
     const handleStorageChange = () => {
-      // Use requestAnimationFrame to ensure we're not in a render cycle
-      requestAnimationFrame(() => {
-        if (!isRefreshing.current) {
-          refreshFromLocalStorage();
-        }
-      });
+      refreshFromLocalStorage();
     };
     
-    // Refresh initially, but wrap in RAF for safety
-    requestAnimationFrame(() => {
-      refreshFromLocalStorage();
-    });
+    // Also refresh initially
+    refreshFromLocalStorage();
     
     // Add event listener for storage events
     window.addEventListener('storage', handleStorageChange);

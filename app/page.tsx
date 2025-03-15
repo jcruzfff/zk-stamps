@@ -246,11 +246,8 @@ export default function Home() {
           localStorage.setItem('poaps', JSON.stringify(updatedPoaps));
           
           // Force trigger any components that might be listening for localStorage changes
-          // Move to next event loop tick to avoid React render phase setState errors
-          setTimeout(() => {
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new Event('poap-minted'));
-          }, 0);
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('poap-minted'));
         } catch (err) {
           console.error('🔴 [Home] Failed to save POAPs to localStorage:', err);
         }
@@ -486,9 +483,9 @@ export default function Home() {
           <div className="home-page-container">
             {/* Navigation bar */}
             <div className="main-nav">
-              <div className="nav-logo">
-                <Image src="/logo.svg" alt="zkStamps" width={40} height={40} />
-                <span>zkStamps</span>
+              <div className="nav-logo border-1 h-[40px] pl-3 border-white/10 rounded-full p-2">
+                <Image src="/points-plane.svg" alt="zkStamps" width={32} height={32} />
+                <span>10400</span>
               </div>
               <div className="flex items-center gap-4">
                 <button 
@@ -546,6 +543,10 @@ export default function Home() {
                       </>
                     )}
                     
+                    {/* POAPs Collected - Using the POAPCollection component */}
+                    <h2 className="section-title">POAPs Collected</h2>
+                    <POAPCollection />
+                    
                     {/* Travel Verification - Using the TravelVerification component */}
                     <h2 className="section-title">Travel Verification</h2>
                     <div id="travel-verification">
@@ -554,10 +555,6 @@ export default function Home() {
                         onPoapMinted={handlePoapMinted}
                       />
                     </div>
-                    
-                    {/* POAPs Collected - Using the POAPCollection component */}
-                    <h2 className="section-title">POAPs Collected</h2>
-                    <POAPCollection />
                     
                     {/* Stats - Using the TravelStats component */}
                     <h2 className="section-title">Places you&apos;ve seen</h2>

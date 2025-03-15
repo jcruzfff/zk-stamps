@@ -23,15 +23,14 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Only render the globe when it's in view - using options that won't cause re-renders
+  // Only render the globe when it's in view
   const { ref: inViewRef, inView } = useInView({
     threshold: 0.1,
     triggerOnce: false
   });
   
-  // Use useCallback to stabilize the ref merging function and prevent re-renders
+  // Merge refs
   const setRefs = useCallback((el: HTMLDivElement | null) => {
-    // Only update refs if the element exists and has changed
     if (el && containerRef.current !== el) {
       containerRef.current = el;
       inViewRef(el);
@@ -41,50 +40,34 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
-      // Use window dimensions directly for proper sizing
       setDimensions({
         width: window.innerWidth,
-        // Use a more reasonable height for better performance
         height: window.innerHeight * 0.9
       });
     };
 
     updateDimensions();
-
-    const handleResize = () => {
-      updateDimensions();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Convert POAPs to markers
-  const markers = poaps.map(poap => {
-    // Remove repetitive logs
-    // Check if the country is the US and provide correct coordinates if needed
-    let coordinates = poap.coordinates;
-    
-    // If this is the US and coordinates look incorrect (in the ocean), use fallback
-    if (poap.countryCode.toLowerCase() === 'us' && 
-        (Math.abs(poap.coordinates[0]) < 10 || Math.abs(poap.coordinates[1]) < 20)) {
-      // Remove this excessive logging
-      coordinates = [37.0902, -95.7129]; // Geographic center of US
-    }
+  // Convert POAPs to markers with simple fixed properties for demo
+  const markers = poaps.map(() => {
+    // Just use US coordinates
+    const coordinates: [number, number] = [37.0902, -95.7129]; // Geographic center of US
     
     return {
       lat: coordinates[0],
       lng: coordinates[1],
-      size: 3, // Increased size for better visibility
-      color: '#C25B44', // 
-      country: poap.country,
-      countryCode: poap.countryCode
+      size: 2, // Increased size for better visibility
+      color: '#74ECD6', // Bright yellow color matching what's visible in screenshot
+      country: 'United States',
+      countryCode: 'US'
     };
   });
 
-  // Preload globe textures to improve performance
+  // Preload globe textures
   useEffect(() => {
-    // Only start loading the textures if the component is in view
     if (!inView) return;
     
     const preloadImages = () => {
@@ -101,12 +84,10 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
         img.onload = () => {
           loadedCount++;
           if (loadedCount === imageUrls.length) {
-            // All images preloaded, we can start rendering the globe
             setIsLoading(false);
           }
         };
         img.onerror = () => {
-          // On error, still continue to load the globe, just log the error
           console.error(`Failed to preload image: ${url}`);
           loadedCount++;
           if (loadedCount === imageUrls.length) {
@@ -117,39 +98,27 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
       });
     };
     
-    // Start preloading images
     preloadImages();
   }, [inView]);
 
-  // Configure globe when it's ready - use memoized callback for stability
+  // Configure globe
   const handleGlobeReady = useCallback(() => {
     setGlobeReady(true);
   }, []);
 
-  // Setup globe controls and settings
+  // Setup globe controls
   useEffect(() => {
     if (globeRef.current && globeReady) {
-      // Auto-rotate the globe slowly
+      // Auto-rotate
       globeRef.current.controls().autoRotate = true;
       globeRef.current.controls().autoRotateSpeed = 0.3;
       
-      // Check if we have a US marker and adjust view accordingly
-      const usMarker = markers.find(m => m.countryCode.toLowerCase() === 'us');
-      if (usMarker) {
-        // Adjust camera position to show US
-        globeRef.current.pointOfView({
-          lat: usMarker.lat,
-          lng: usMarker.lng,
-          altitude: 2.5
-        });
-      } else {
-        // Default view otherwise
-        globeRef.current.pointOfView({
-          lat: 20,
-          lng: 20,
-          altitude: 2.5
-        });
-      }
+      // Point at the US for demo
+      globeRef.current.pointOfView({
+        lat: 37.0902,
+        lng: -95.7129,
+        altitude: 2.5
+      });
       
       // Additional globe settings for better visuals
       if (globeRef.current.controls) {
@@ -164,7 +133,7 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
         globeRef.current.controls().maxDistance = 400;
       }
     }
-  }, [globeReady, markers]);
+  }, [globeReady]);
   
   // Pause globe rotation and rendering when not in view to save resources
   useEffect(() => {
@@ -187,12 +156,12 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
     }
   }, [inView, globeReady]);
   
-  // Prevent events from propagating to prevent bottom sheet activation
+  // Prevent events from propagating
   const preventPropagation = useCallback((e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
     e.stopPropagation();
   }, []);
 
-  // Memoize the Globe component to prevent unnecessary re-renders
+  // Render globe
   const renderGlobe = () => {
     if (!inView) {
       return (
@@ -230,15 +199,8 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
             pointRadius="size"
             pointAltitude={0.01}
             onGlobeReady={handleGlobeReady}
-            atmosphereColor="#B3D9FF" // Light blue atmosphere
+            atmosphereColor="#B3D9FF"
             backgroundColor="rgba(0,0,0,0)"
-            pointsMerge={true} // Improve performance
-            rendererConfig={{ 
-              antialias: false, // Disable antialiasing for better performance
-              alpha: true,
-              powerPreference: 'high-performance',
-              precision: 'lowp' // Use lower precision for better performance
-            }}
           />
         </div>
       );
@@ -258,6 +220,11 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
       onWheel={preventPropagation}
     >
       {renderGlobe()}
+      
+      {/* Globe branding - positioned at bottom left */}
+      <div className="globe-branding">
+        <span>zkStamps</span>
+      </div>
 
       <style jsx>{`
         .globe-container {
@@ -313,6 +280,20 @@ export default function WorldGlobe({ poaps }: { poaps: POAP[] }) {
           background: radial-gradient(circle, #4BB4F1 0%, #1e3a8a 100%);
           margin-bottom: 20px;
           opacity: 0.7;
+        }
+        
+        .globe-branding {
+          position: absolute;
+          bottom: 29%;
+          left: 20px;
+          z-index: 5;
+          
+          font-size: 14px;
+          font-weight: 600;
+          color: white;
+        
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+          pointer-events: none;
         }
         
         @keyframes spin {

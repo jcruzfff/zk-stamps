@@ -334,17 +334,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
+ 
 }
 
 .nav-logo img {
-  height: 40px;
-  width: 40px;
+  height: 18px;
+  width: 18px;
+  
 }
 
 .nav-logo span {
   font-weight: 600;
-  font-size: 20px;
+  font-size: 12px;
   color: white;
+  padding-right: 8px;
 }
 
 /* Bottom sheet */
